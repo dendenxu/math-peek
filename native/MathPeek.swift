@@ -9,6 +9,7 @@ let inputLimit = 2 * 1024 * 1024
 final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate, WKNavigationDelegate, WKScriptMessageHandler {
     enum Presentation { case reader, setup }
     var pendingPresentation: Presentation?
+    var launched = false
     var window: NSWindow!
     var web: WKWebView!
     var statusItem: NSStatusItem!
@@ -36,6 +37,34 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         defaults.register(defaults: ["hoverEnabled": true, "setupComplete": false])
+        setupMenu()
+        registerHotkey()
+        NSApp.servicesProvider = self
+        NSUpdateDynamicServices()
+        hover = HoverController(resources: resources, enabled: defaults.bool(forKey: "hoverEnabled")) { [weak self] message in
+            guard let self else { return }
+            self.hoverStatus = message
+            if self.ready { self.call("setHoverStatus", [message, AXIsProcessTrusted()]) }
+            self.refreshSetupState()
+        }
+        launched = true
+        if ProcessInfo.processInfo.arguments.contains("--enable-login") { setLogin(true) }
+        refreshSetupState()
+        settingsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.refreshSetupState()
+        }
+        if pendingPresentation == .reader {
+            show()
+        } else if pendingPresentation == .setup || !defaults.bool(forKey: "setupComplete") {
+            showSetup()
+        }
+        pendingPresentation = nil
+    }
+
+    private func ensureWindow() {
+        guard launched, window == nil else { return }
+        // Background hover uses native views only. Load WebKit when the user
+        // explicitly opens the reader or needs first-run setup.
         let controller = WKUserContentController()
         controller.add(self, name: "native")
         let config = WKWebViewConfiguration()
@@ -54,29 +83,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         window.delegate = self
         window.setFrameAutosaveName("MathPeekPreview")
         window.center()
-        setupMenu()
-        registerHotkey()
-        NSApp.servicesProvider = self
-        NSUpdateDynamicServices()
         let page = resources.appendingPathComponent("web/index.html")
         web.loadFileURL(page, allowingReadAccessTo: resources.appendingPathComponent("web"))
-        hover = HoverController(resources: resources, enabled: defaults.bool(forKey: "hoverEnabled")) { [weak self] message in
-            guard let self else { return }
-            self.hoverStatus = message
-            if self.ready { self.call("setHoverStatus", [message, AXIsProcessTrusted()]) }
-            self.refreshSetupState()
-        }
-        if ProcessInfo.processInfo.arguments.contains("--enable-login") { setLogin(true) }
-        refreshSetupState()
-        settingsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.refreshSetupState()
-        }
-        if pendingPresentation == .reader {
-            show()
-        } else if pendingPresentation == .setup || !defaults.bool(forKey: "setupComplete") {
-            showSetup()
-        }
-        pendingPresentation = nil
     }
 
     func setupMenu() {
@@ -148,7 +156,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     @objc func show() {
         showingSetup = false
-        guard window != nil else { pendingPresentation = .reader; return }
+        guard launched else { pendingPresentation = .reader; return }
+        ensureWindow()
         if ready { call("hideSetup", []) }
         window?.setContentSize(NSSize(width: 1100, height: 760))
         window?.makeKeyAndOrderFront(nil)
@@ -157,7 +166,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     @objc func showSetup() {
         showingSetup = true
-        guard window != nil else { pendingPresentation = .setup; return }
+        guard launched else { pendingPresentation = .setup; return }
+        ensureWindow()
         refreshSetupState(force: true)
         if ready { call("showSetup", []) }
         window?.setContentSize(NSSize(width: 760, height: 620))
@@ -185,7 +195,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         loginMenuItem.state = login == .enabled ? .on : login == .requiresApproval ? .mixed : .off
         let state: [String: Any] = ["trusted": trusted, "hoverEnabled": hover.enabled,
             "loginEnabled": login == .enabled, "loginNeedsApproval": login == .requiresApproval,
-            "setupComplete": defaults.bool(forKey: "setupComplete"), "setupError": setupError]
+            "setupComplete": defaults.bool(forKey: "setupComplete"), "setupError": setupError,
+            "readerLoaded": web != nil]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
         guard force || serialized != lastSetupState else { return }
@@ -250,7 +261,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Math Peek",
             .applicationVersion: "1.0",
-            .credits: NSAttributedString(string: "Offline Markdown + LaTeX preview. Control-Command-M reads an iTerm2 selection / screen, or previews the clipboard in other apps.\nKaTeX, marked and DOMPurify licenses are bundled in Resources/web/vendor.")
+            .credits: NSAttributedString(string: "Native LaTeX hover rendering with SwiftMath. The optional Markdown reader uses KaTeX, marked, and DOMPurify. Control-Command-M opens an iTerm2 selection / screen, or the clipboard in other apps.\nSwiftMath and font licenses are bundled with SwiftMath_SwiftMath.bundle; reader licenses are in Resources/web/vendor.")
         ])
     }
 

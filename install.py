@@ -4,7 +4,6 @@
 import argparse
 from pathlib import Path
 import plistlib
-import platform
 import shutil
 import subprocess
 import sys
@@ -31,11 +30,10 @@ def main():
         info = APP / "Contents/Info.plist"
         if not info.exists() or plistlib.loads(info.read_bytes()).get("CFBundleIdentifier") != IDENTIFIER:
             parser.error("another app already occupies " + str(APP))
-    build = ROOT / "build"
-    build.mkdir(exist_ok=True)
-    run("xcrun", "swiftc", "-O", "-target", platform.machine() + "-apple-macos13.0",
-        *sorted((ROOT / "native").glob("*.swift")), "-o", build / "MathPeek",
-        "-framework", "AppKit", "-framework", "WebKit", "-framework", "Carbon", "-framework", "ServiceManagement")
+    run("xcrun", "swift", "build", "--package-path", ROOT, "-c", "release", "--product", "MathPeek")
+    build = Path(subprocess.check_output(
+        ["xcrun", "swift", "build", "--package-path", str(ROOT), "-c", "release", "--show-bin-path"],
+        text=True).strip())
     if not args.skip_iterm:
         if not (RUNTIME / "bin/python3").exists():
             run(sys.executable, "-m", "venv", RUNTIME)
@@ -46,9 +44,17 @@ def main():
     resources.mkdir(exist_ok=True)
     shutil.copy2(build / "MathPeek", contents / "MacOS/MathPeek")
     shutil.copy2(ROOT / "assets/MathPeek.icns", resources / "MathPeek.icns")
+    license_destination = resources / "SwiftMath-LICENSE"
+    # Older installs preserve the checkout's read-only mode; replace that copy.
+    license_destination.unlink(missing_ok=True)
+    shutil.copyfile(ROOT / "licenses/SwiftMath-LICENSE", license_destination)
+    shutil.copytree(build / "SwiftMath_SwiftMath.bundle", resources / "SwiftMath_SwiftMath.bundle", dirs_exist_ok=True)
     for name in ["web", "integration"]:
-        shutil.copytree(ROOT / name, resources / name, dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns("__pycache__", "*.test.js", "*.test.cjs"))
+        destination = resources / name
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(ROOT / name, destination,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.test.js", "*.test.cjs", "hover.*"))
     metadata = {
         "CFBundleIdentifier": IDENTIFIER,
         "CFBundleExecutable": "MathPeek",

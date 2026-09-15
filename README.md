@@ -5,19 +5,22 @@
 Hover over LaTeX in iTerm2 and read the rendered formula in a small macOS popup.
 No selection, remote installation, terminal image protocol, or Python process
 is needed for hover. Math Peek reads local accessibility text, extracts formulas
-in compiled Swift, and renders them with bundled KaTeX.
+in compiled Swift, and renders them with SwiftMath using AppKit and CoreText.
+The optional reading window uses bundled KaTeX for longer Markdown responses.
 
 ![A formula rendered in Math Peek's dark glass popup](screenshots/glass-preview.png)
 
-The popup uses a monochrome glass background, follows the formula's size, and
-does not take keyboard focus. There are no animations or intentional hover
-delay. Mouse position is checked approximately every 16 ms; this is the polling
-interval, not a guarantee of total rendering latency.
+The popup uses a monochrome glass background, follows the formula's size down
+to a 40 x 34 point minimum, and does not take keyboard focus. Oversized formulas
+are scaled proportionally to fit the available space. There are no animations
+or intentional hover delay. Mouse position is checked approximately every 16 ms;
+this is the polling interval, not a guarantee of total rendering latency.
 
 ## Install
 
 Requires macOS 13 or later, Python 3 for the installer, and Xcode Command Line
-Tools (`xcode-select --install` if needed).
+Tools with Swift 5.9 or later (`xcode-select --install` if needed). The first build
+needs network access to download the SwiftMath revision pinned in `Package.swift`.
 
 ```sh
 git clone https://github.com/dendenxu/math-peek.git
@@ -26,7 +29,8 @@ python3 install.py --skip-iterm
 open "$HOME/Applications/Math Peek.app"
 ```
 
-This installs native hover and the clipboard/file reader. To also enable the
+This builds the app and installs native hover, its math font resource bundle,
+and the clipboard/file reader. To also enable the
 optional iTerm2 selection/screen capture, follow mode, and RPC integration, use
 `python3 install.py` without `--skip-iterm`. Those features install Python
 dependencies into a private environment under
@@ -43,7 +47,9 @@ launching at login. Allow **Math Peek** in **System Settings > Privacy & Securit
 > Accessibility**, choose whether to launch at login, then finish setup.
 
 Math Peek runs in the menu bar without keeping a Dock icon or reading window
-open. Use **Setup...** from the `M∑` menu to revisit setup, **Open Reader** when
+open. After setup is complete, a normal background launch creates no window or
+WebKit view; those are created when you open the reader or setup. Use **Setup...**
+from the `M∑` menu to revisit setup, **Open Reader** when
 needed, or **Launch at Login** to change startup behavior. Login startup uses
 macOS `SMAppService`; macOS may ask you to approve
 it in **System Settings > General > Login Items**.
@@ -54,9 +60,13 @@ it in **System Settings > General > Login Items**.
 
 Bring iTerm2 to the foreground and move the pointer onto a formula. Move away to
 dismiss the popup. Hover recognizes `$...$`, `$$...$$`, `\(...\)`, and `\[...\]`.
-Matrices and `aligned` environments work within KaTeX's supported syntax. Code
-spans and fenced code blocks are excluded; ambiguous currency is handled
-conservatively.
+It also recognizes standalone raw TeX such as `\frac{a}{b}` and
+`v_{\mathrm{pred}} = a_{\mathrm{world}}\Delta t`, including clear wrapped
+continuations. Raw detection requires known math commands and a formula-shaped
+line; it deliberately avoids guessing from ordinary prose or shell commands.
+Matrices and `aligned` environments work within SwiftMath's supported syntax.
+Code spans and fenced code blocks are excluded; ambiguous currency is handled
+conservatively. Unsupported math syntax is displayed as its original source.
 
 | Control | Action |
 | --- | --- |
@@ -77,9 +87,11 @@ clipboard/file content is opened.
 
 首次启动按引导允许「辅助功能」、开启悬停，并选择是否登录时自动运行；完成后应用
 留在菜单栏，不常驻 Dock 或阅读窗口。需要修改时点菜单栏 `M∑ → Setup...`。
-让 iTerm2 处于前台，把鼠标移到带分隔符的公式上即可预览。不用框选，没有停留等待
-或动画；悬停解析全部在 Swift 应用内完成，不启动 Python。SSH 和 tmux 不需要安装
-任何东西。没有分隔符的裸 TeX 可以复制到阅读窗口，切换为「纯 LaTeX 公式」。
+让 iTerm2 处于前台，把鼠标移到公式上即可预览。不用框选，没有停留等待或动画；悬停
+解析和渲染全部在 Swift 应用内完成，不启动 Python 或网页。SSH 和 tmux 不需要安装
+任何东西。带分隔符的公式以及含已知数学命令的独立裸 TeX 都可识别；混在普通文字里
+的裸 TeX 可以复制到阅读窗口，切换为「纯 LaTeX 公式」。浮窗按内容自适应大小，最小
+为 40 x 34 点，过大的公式等比缩放以避免内容超出边界。
 
 ## Files, SSH, and tmux
 
@@ -105,14 +117,23 @@ Hover currently targets iTerm2's accessibility interface. Native soft wraps are
 rejoined by iTerm2. For tmux, Math Peek preserves math line breaks and repairs
 split common commands such as `\fra` followed by `c` on the next row. Stable
 vertical pane borders allow extraction from one pane, including ordinary CJK
-and wide characters.
+and wide characters. Extra `│` decorations in a neighboring pane and horizontal
+split junctions such as `┤` do not interrupt the hovered pane's formula. A new
+border inside the hovered pane still stops extraction across that boundary.
+
+Repairs are intentionally narrow: within matrix or aligned-style environments,
+a lone trailing backslash on a recognizable row, or a damaged `\[8pt]` spacing
+marker at the end of a row, can be restored to a TeX line break. Existing valid
+line breaks are preserved. Missing mathematical symbols or operators are not
+inferred from context.
 
 This is a preview overlay; it does not replace characters inside the terminal.
-Missing delimiters, hidden tmux history, uncertain pane boundaries, and complex
+Unrecognizable raw TeX, hidden tmux history, uncertain pane boundaries, and complex
 emoji layouts cannot always be reconstructed. Exporting the target tmux pane
 with `capture-pane -J` is useful for those cases. Very old scrollback may not be
-exposed through iTerm2's accessibility interface. KaTeX supports mathematical
-TeX, not arbitrary TeX documents; unsupported syntax remains visible as text.
+exposed through iTerm2's accessibility interface. SwiftMath and the reader's
+KaTeX support subsets of mathematical TeX, not arbitrary TeX documents;
+unsupported syntax remains visible as text.
 Reader inputs are limited to 2 MB.
 
 ## Permissions and local data
@@ -122,7 +143,9 @@ iTerm2's Python API. Optional capture/follow features use that API and may need
 **iTerm2 Settings > General > Magic > Enable Python API**, plus first-use
 authorization. Clipboard and file preview work independently of either API.
 
-Rendering is offline: KaTeX, marked, DOMPurify, and fonts are bundled. Pasted
+Rendering is offline: SwiftMath's math fonts are included in
+`Contents/Resources/SwiftMath_SwiftMath.bundle`; KaTeX, marked, DOMPurify, and the
+reader's fonts are bundled separately. Pasted
 remote images are not loaded, and preview links do not navigate. Content is not
 stored in browser storage. Pipe and RPC handoff files use a private local
 directory, `~/Library/Caches/Math Peek/Requests/`, and are deleted after the app
@@ -142,6 +165,9 @@ hover, and login-startup state. Neither diagnostic file includes terminal text.
 
 The native extractor is `native/HoverMath.swift`. Hover uses that implementation
 directly; `integration/hover_math.py` is a reference implementation for tests.
+`native/FormulaView.swift` handles native measurement and rendering. SwiftPM
+builds the app from `Package.swift`; the installer copies SwiftMath's resource
+bundle into the app so rendering works without the build checkout.
 The optional iTerm2 adapter is documented in [integration/README.md](integration/README.md).
 
 ```sh
@@ -150,14 +176,29 @@ xcrun swiftc -O native/HoverMath.swift tests/native_math/main.swift -o build/nat
 build/native-math-tests tests/native_math/fixtures.json
 python3 -m unittest discover -s tests -v
 node --test web/core.test.cjs
+scripts/test_native.sh
 ```
 
-The native suite contains 109 parity fixtures. `tests/hover_demo.py` and
-`tests/ax_probe/main.swift` provide an isolated iTerm2/tmux smoke test; the AX probe
-requires Accessibility permission and looks for the explicit demo marker.
-Do not use private terminal captures as repository fixtures.
+The extractor suite checks parity with the Python reference. `scripts/test_native.sh`
+builds the app and verifies native rendering, including long expressions,
+multiline layout, fitting within the popup, source fallback, and successive
+formula changes. For live pointer and hover-transition checks, raise the isolated
+demo from `tests/hover_demo.py` in iTerm2, pause the installed app's hover, and run
+`scripts/test_native.sh --live`. The probe needs Accessibility permission; live
+checks move the pointer and refuse to read a focused window without the explicit
+demo marker. Add `--occlusion` to test a target covered by the previous popup.
+For the agent-output regressions, put `tests/tmux_regression_demo.py` in a
+65-column right pane and its `--neighbor` / `--bottom` modes in two left panes,
+then run `scripts/test_native.sh --live --regression`. This checks wrapped raw
+TeX, damaged matrix/aligned row breaks, and a formula crossing the left panes'
+horizontal split.
+`tests/ax_probe/main.swift` also checks extraction against the demo's actual
+accessibility text. Do not use private terminal captures as repository fixtures.
 
-Bundled dependency versions and their license files are in `web/vendor/`.
+The SwiftMath revision is pinned in `Package.swift` and `Package.resolved`;
+its MIT license is in `licenses/SwiftMath-LICENSE` and included in the installed
+app. Its font bundle retains the included font licenses. Reader dependency versions
+and their license files are in `web/vendor/`.
 To uninstall, disable **Launch at Login** from the menu bar, quit the app, then remove
 `~/Applications/Math Peek.app`, `~/Library/Application Support/Math Peek`, and
 `~/.local/bin/math-peek`.

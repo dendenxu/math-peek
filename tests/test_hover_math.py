@@ -175,6 +175,132 @@ class HoverMathTests(unittest.TestCase):
         text = "\n".join(row.ljust(90) + "│ neighbor" for row in rows)
         self.assertEqual(extract(text, text.index("x$$"))["text"], rows[0].ljust(90) + "\nx$$")
 
+    def test_neighbor_log_borders_do_not_split_multiline_formula_pane(self):
+        formula_rows = ["$$", r"v_{\mathrm{est}}", "", r"v_{\mathrm{pred}}", "+", r"K\left(v_{\mathrm{leg}}-v_{\mathrm{pred}}\right)", "$$"]
+        logs = ["log", "  │ detail", "", "plain", "  │ more", "log", "  │ done"]
+        rows = [log.ljust(24) + "│ " + formula for log, formula in zip(logs, formula_rows)]
+        text = "\n".join(rows)
+        expected = "$$\n " + "\n ".join(formula_rows[1:])
+        offset = 0
+        for row, formula_row in zip(rows, formula_rows):
+            for column, character in enumerate(formula_row):
+                if not character.isspace():
+                    result = extract(text, offset + 26 + column)
+                    self.assertIsNotNone(result)
+                    self.assertEqual(result["text"], expected)
+            offset += len(row) + 1
+
+    def test_changing_borders_in_right_neighbor_do_not_break_left_formula(self):
+        rows = ["$$x+", "y+", "z$$"]
+        logs = ["plain", "  │ detail", "plain"]
+        text = "\n".join(row.ljust(20) + "│" + log for row, log in zip(rows, logs))
+        self.assertEqual(extract(text, text.index("y+"))["text"], rows[0].ljust(20) + "\n" + rows[1].ljust(20) + "\nz$$")
+
+    def test_new_border_inside_hovered_pane_still_rejects_crossing(self):
+        text = "left    │$$x+\nleft    │y │other\nleft    │z$$"
+        self.assertIsNone(extract(text, text.index("x+")))
+
+    def test_neighbor_horizontal_split_preserves_right_pane_formula_boundary(self):
+        for junction in "┤├┼╢╟╫":
+            with self.subTest(junction=junction):
+                text = "plain".ljust(24) + "│$$\n" + "─" * 24 + junction + "x+y\n" + "  │ log".ljust(24) + "│$$"
+                expected = "$$\nx+y\n$$"
+                for offset in (text.index("$$"), text.index("x+y"), text.rindex("$$")):
+                    self.assertEqual(extract(text, offset)["text"], expected)
+
+    def test_formula_start_on_neighbor_split_row_does_not_shift_dollar_pairs(self):
+        text = "─" * 24 + "┤$$\n" + "plain".ljust(24) + "│a+b\n" + "  │ log".ljust(24) + "│$$\n" + "plain".ljust(24) + "│text\n" + "plain".ljust(24) + "│$$c+d$$"
+        self.assertEqual(extract(text, text.index("a+b"))["text"], "$$\na+b\n$$")
+        self.assertEqual(extract(text, text.index("c+d"))["text"], "$$c+d$$")
+
+    def test_standalone_raw_tex_formula_without_delimiters(self):
+        formula = r"v_{\mathrm{pred}} = v_{\mathrm{prev}} + a_{\mathrm{world}}\Delta t"
+        text = "plain\n  " + formula + "  \nplain"
+        for index, character in enumerate(formula):
+            if not character.isspace():
+                self.assertEqual(extract(text, len("plain\n  ") + index)["text"], formula)
+        self.assertEqual(extract(r"\frac{a}{b}", 4)["text"], r"\frac{a}{b}")
+
+    def test_raw_tex_does_not_capture_shell_prose_or_code(self):
+        for source in (r'print("\frac{a}{b}")', r"echo \frac{a}{b}", r"The formula is \frac{a}{b}", r"解释 \frac{a}{b}", r"/tmp/\alpha/file", r"const x = \frac{a}{b};", r"cost $5 then \alpha", r"x = custom_function(\alpha)"):
+            with self.subTest(source=source):
+                self.assertIsNone(extract(source, source.index("\\")))
+
+    def test_raw_tex_in_pane_ignores_neighbor_code_and_preserves_offset(self):
+        formula = r"v_{\mathrm{pred}} = a_{\mathrm{world}}\Delta t"
+        text = "log".ljust(20) + "│plain\n" + " │ source".ljust(20) + "│" + formula + "\n" + "log".ljust(20) + "│plain"
+        result = extract(text, text.index("Delta"))
+        self.assertEqual(result["text"], formula)
+        self.assertEqual(result["start"], text.index("v_{"))
+
+    def test_matrix_single_backslash_and_aligned_spacing_rows_are_repaired(self):
+        source = "$$\\begin{bmatrix}\na & b \\\nc & d\n\\end{bmatrix}$$"
+        expected = "$$\\begin{bmatrix}\na & b \\\\\nc & d\n\\end{bmatrix}$$"
+        self.assertEqual(extract(source, source.index("a &"))["text"], expected)
+        source = "$$\\begin{aligned}\na &= b\n\\[8pt]\nc &= d\n\\end{aligned}$$"
+        self.assertEqual(extract(source, source.index("a &"))["text"], source.replace("\\[8pt]", "\\\\[8pt]"))
+
+    def test_environment_repairs_do_not_touch_unrelated_math_or_valid_rowbreaks(self):
+        for source in ("$$a & b \\\nc & d$$", "$$\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}$$", "$$\\begin{aligned}\n\\[x+y]\n\\end{aligned}$$"):
+            with self.subTest(source=source):
+                self.assertEqual(extract(source, 3)["text"], source)
+
+    def test_column_vector_single_row_backslash_is_repaired(self):
+        source = "$$\\begin{bmatrix}\n\\hat p_{t|t-1}\\\n\\hat v_{t|t-1}\n\\end{bmatrix}$$"
+        self.assertEqual(extract(source, source.index("p_{"))["text"], source.replace("p_{t|t-1}\\\n", "p_{t|t-1}\\\\\n"))
+
+    def test_raw_formula_wraps_only_clear_math_continuations(self):
+        for source, expected in (("x = \\fra\n  c{a}{b}", r"x = \frac{a}{b}"), ("v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t", "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"), ("x = \\frac{a+\n b}{c}", "x = \\frac{a+\n b}{c}")):
+            with self.subTest(source=source):
+                for offset, character in enumerate(source):
+                    if not character.isspace():
+                        self.assertEqual(extract(source, offset)["text"], expected)
+        separate = "x = \\alpha\ny = \\beta"
+        self.assertEqual(extract(separate, separate.index("beta"))["text"], r"y = \beta")
+        self.assertIsNone(extract("x = \\frac{a\nordinary prose", 5))
+
+    def test_aligned_spacing_after_expression_is_repaired_without_doubling_valid_breaks(self):
+        damaged = "$$\\begin{aligned}\na &= b \\[8pt]\nc &= d\n\\end{aligned}$$"
+        valid = damaged.replace("\\[8pt]", "\\\\[8pt]")
+        self.assertEqual(extract(damaged, damaged.index("a &"))["text"], valid)
+        self.assertEqual(extract(valid, valid.index("a &"))["text"], valid)
+        outside = "$$a = b \\[8pt]$$"
+        self.assertEqual(extract(outside, 3)["text"], outside)
+
+    def test_raw_state_index_allows_grouped_bar_but_not_shell_pipeline(self):
+        formula = r"\hat p_{t|t-1} = \hat v_{t|t-1} + \Delta t"
+        self.assertEqual(extract(formula, formula.index("p_"))["text"], formula)
+        self.assertIsNone(extract(r"\hat p = x | cat", 2))
+        self.assertIsNone(extract(r"\alpha | \beta", 2))
+
+    def test_bare_fallback_does_not_escape_fenced_code(self):
+        for source in ("```latex\n\\frac{a}{b}\n```", "~~~\nx = \\alpha\n~~~", "```\nx = \\alpha"):
+            with self.subTest(source=source):
+                self.assertIsNone(extract(source, source.index("\\")))
+
+    def test_raw_velocity_command_with_single_variable_on_wrapped_tail(self):
+        formula = r"v_{\mathrm{pred}} = v_{\mathrm{prev}} + a_{\mathrm{world}}\Delta t"
+        first, tail = formula.rsplit(" ", 1)
+        rows = ["neighbor".ljust(20) + "│" + first + " ", "  │ log".ljust(20) + "│" + tail, "neighbor".ljust(20) + "│plain"]
+        text = "\n".join(rows)
+        expected = first + " \n" + tail
+        for row_index in range(2):
+            row_start = sum(len(row) + 1 for row in rows[:row_index])
+            for column, character in enumerate(rows[row_index][21:]):
+                if not character.isspace():
+                    self.assertEqual(extract(text, row_start + 21 + column)["text"], expected)
+        separate = r"x = \Delta" + "\ny = \\beta"
+        self.assertEqual(extract(separate, separate.index("beta"))["text"], r"y = \beta")
+        delimited = "$$\\sin\nx$$"
+        self.assertEqual(extract(delimited, 4)["text"], delimited)
+
+    def test_environment_row_repairs_preserve_nested_text_and_grouped_spacing(self):
+        for source in ("$$\\begin{bmatrix}\n\\text{a\\\nb}\n\\end{bmatrix}$$", "$$\\begin{aligned}\n{a &= b \\[8pt]\nc}\n\\end{aligned}$$"):
+            with self.subTest(source=source):
+                self.assertEqual(extract(source, source.index("a"))["text"], source)
+        escaped_brace = "$$\\begin{bmatrix}\n\\{a\\\nb\n\\end{bmatrix}$$"
+        self.assertEqual(extract(escaped_brace, escaped_brace.index("a\\"))["text"], escaped_brace.replace("a\\\n", "a\\\\\n"))
+
 
 if __name__ == "__main__":
     unittest.main()

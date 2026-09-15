@@ -543,5 +543,1665 @@
     "text": "$$\\fra\n c{a}{b}$$",
     "offset": 4,
     "expected": "$$\\fra\n c{a}{b}$$"
+  },
+  {
+    "text": "$$x+                │plain\ny+                  │  │ detail\nz$$                 │plain",
+    "offset": 27,
+    "expected": "$$x+                \ny+                  \nz$$"
+  },
+  {
+    "text": "$$a & b \\\nc & d$$",
+    "offset": 3,
+    "expected": "$$a & b \\\nc & d$$"
+  },
+  {
+    "text": "$$\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}$$",
+    "offset": 3,
+    "expected": "$$\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}$$"
+  },
+  {
+    "text": "$$\\begin{aligned}\n\\[x+y]\n\\end{aligned}$$",
+    "offset": 3,
+    "expected": "$$\\begin{aligned}\n\\[x+y]\n\\end{aligned}$$"
+  },
+  {
+    "text": "────────────────────────┤$$\nplain                   │a+b\n  │ log                 │$$\nplain                   │text\nplain                   │$$c+d$$",
+    "offset": 53,
+    "expected": "$$\na+b\n$$"
+  },
+  {
+    "text": "────────────────────────┤$$\nplain                   │a+b\n  │ log                 │$$\nplain                   │text\nplain                   │$$c+d$$",
+    "offset": 142,
+    "expected": "$$c+d$$"
+  },
+  {
+    "text": "$$\\begin{bmatrix}\na & b \\\nc & d\n\\end{bmatrix}$$",
+    "offset": 18,
+    "expected": "$$\\begin{bmatrix}\na & b \\\\\nc & d\n\\end{bmatrix}$$"
+  },
+  {
+    "text": "$$\\begin{aligned}\na &= b\n\\[8pt]\nc &= d\n\\end{aligned}$$",
+    "offset": 18,
+    "expected": "$$\\begin{aligned}\na &= b\n\\\\[8pt]\nc &= d\n\\end{aligned}$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┤x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┤x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┤x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────├x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────├x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────├x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┼x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┼x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────┼x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╢x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╢x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╢x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╟x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╟x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╟x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╫x+y\n  │ log                 │$$",
+    "offset": 25,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╫x+y\n  │ log                 │$$",
+    "offset": 53,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "plain                   │$$\n────────────────────────╫x+y\n  │ log                 │$$",
+    "offset": 82,
+    "expected": "$$\nx+y\n$$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 26,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 27,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 55,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 56,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 57,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 58,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 59,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 60,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 61,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 62,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 63,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 64,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 65,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 66,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 67,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 68,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 69,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 70,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 125,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 126,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 127,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 128,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 129,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 130,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 131,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 132,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 133,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 134,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 135,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 136,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 137,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 138,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 139,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 140,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 141,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 169,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 197,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 198,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 199,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 200,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 201,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 202,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 203,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 204,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 205,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 206,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 207,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 208,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 209,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 210,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 211,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 212,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 213,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 214,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 215,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 216,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 217,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 218,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 219,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 220,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 221,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 222,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 223,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 224,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 225,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 226,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 227,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 228,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 229,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 230,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 231,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 232,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 233,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 234,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 235,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 236,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 237,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 238,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 239,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 240,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 241,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 242,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 243,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 244,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 272,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "log                     │ $$\n  │ detail              │ v_{\\mathrm{est}}\n                        │ \nplain                   │ v_{\\mathrm{pred}}\n  │ more                │ +\nlog                     │ K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n  │ done                │ $$",
+    "offset": 273,
+    "expected": "$$\n v_{\\mathrm{est}}\n \n v_{\\mathrm{pred}}\n +\n K\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n $$"
+  },
+  {
+    "text": "left    │$$x+\nleft    │y │other\nleft    │z$$",
+    "offset": 11,
+    "expected": null
+  },
+  {
+    "text": "print(\"\\frac{a}{b}\")",
+    "offset": 7,
+    "expected": null
+  },
+  {
+    "text": "echo \\frac{a}{b}",
+    "offset": 5,
+    "expected": null
+  },
+  {
+    "text": "The formula is \\frac{a}{b}",
+    "offset": 15,
+    "expected": null
+  },
+  {
+    "text": "解释 \\frac{a}{b}",
+    "offset": 3,
+    "expected": null
+  },
+  {
+    "text": "/tmp/\\alpha/file",
+    "offset": 5,
+    "expected": null
+  },
+  {
+    "text": "const x = \\frac{a}{b};",
+    "offset": 10,
+    "expected": null
+  },
+  {
+    "text": "cost $5 then \\alpha",
+    "offset": 13,
+    "expected": null
+  },
+  {
+    "text": "x = custom_function(\\alpha)",
+    "offset": 20,
+    "expected": null
+  },
+  {
+    "text": "log                 │plain\n │ source           │v_{\\mathrm{pred}} = a_{\\mathrm{world}}\\Delta t\nlog                 │plain",
+    "offset": 87,
+    "expected": "v_{\\mathrm{pred}} = a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 8,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 9,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 10,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 11,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 12,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 13,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 14,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 15,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 16,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 17,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 18,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 19,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 20,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 21,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 22,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 23,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 24,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 26,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 28,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 29,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 30,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 31,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 32,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 33,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 34,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 35,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 36,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 37,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 38,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 39,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 40,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 41,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 42,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 43,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 44,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 46,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 48,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 49,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 50,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 51,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 52,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 53,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 54,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 55,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 56,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 57,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 58,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 59,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 60,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 61,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 62,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 63,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 64,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 65,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 66,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 67,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 68,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 69,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 70,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 71,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "plain\n  v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t  \nplain",
+    "offset": 73,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "\\frac{a}{b}",
+    "offset": 4,
+    "expected": "\\frac{a}{b}"
+  },
+  {
+    "text": "$$\\begin{bmatrix}\n\\hat p_{t|t-1}\\\n\\hat v_{t|t-1}\n\\end{bmatrix}$$",
+    "offset": 23,
+    "expected": "$$\\begin{bmatrix}\n\\hat p_{t|t-1}\\\\\n\\hat v_{t|t-1}\n\\end{bmatrix}$$"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 0,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 2,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 4,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 5,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 6,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 7,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 11,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 12,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 13,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 14,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 15,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 16,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "x = \\fra\n  c{a}{b}",
+    "offset": 17,
+    "expected": "x = \\frac{a}{b}"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 0,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 1,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 2,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 3,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 4,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 5,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 6,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 7,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 8,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 9,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 10,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 11,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 12,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 13,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 14,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 15,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 16,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 18,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 22,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 23,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 24,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 25,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 26,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 27,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 28,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 29,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 30,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 31,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 32,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 33,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 34,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 35,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 36,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 37,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 38,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 39,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 40,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 41,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 42,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 43,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 44,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 45,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t",
+    "offset": 47,
+    "expected": "v_{\\mathrm{pred}} =\n  a_{\\mathrm{world}}\\Delta t"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 0,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 2,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 4,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 5,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 6,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 7,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 8,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 9,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 10,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 11,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 14,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 15,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 16,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 17,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\frac{a+\n b}{c}",
+    "offset": 18,
+    "expected": "x = \\frac{a+\n b}{c}"
+  },
+  {
+    "text": "x = \\alpha\ny = \\beta",
+    "offset": 16,
+    "expected": "y = \\beta"
+  },
+  {
+    "text": "x = \\frac{a\nordinary prose",
+    "offset": 5,
+    "expected": null
+  },
+  {
+    "text": "$$\\begin{aligned}\na &= b \\[8pt]\nc &= d\n\\end{aligned}$$",
+    "offset": 18,
+    "expected": "$$\\begin{aligned}\na &= b \\\\[8pt]\nc &= d\n\\end{aligned}$$"
+  },
+  {
+    "text": "$$\\begin{aligned}\na &= b \\\\[8pt]\nc &= d\n\\end{aligned}$$",
+    "offset": 18,
+    "expected": "$$\\begin{aligned}\na &= b \\\\[8pt]\nc &= d\n\\end{aligned}$$"
+  },
+  {
+    "text": "$$a = b \\[8pt]$$",
+    "offset": 3,
+    "expected": "$$a = b \\[8pt]$$"
+  },
+  {
+    "text": "```latex\n\\frac{a}{b}\n```",
+    "offset": 9,
+    "expected": null
+  },
+  {
+    "text": "~~~\nx = \\alpha\n~~~",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "text": "```\nx = \\alpha",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "text": "\\hat p_{t|t-1} = \\hat v_{t|t-1} + \\Delta t",
+    "offset": 5,
+    "expected": "\\hat p_{t|t-1} = \\hat v_{t|t-1} + \\Delta t"
+  },
+  {
+    "text": "\\hat p = x | cat",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "text": "\\alpha | \\beta",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 21,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 22,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 23,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 24,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 25,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 26,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 27,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 28,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 29,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 30,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 31,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 32,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 33,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 34,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 35,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 36,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 37,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 39,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 41,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 42,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 43,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 44,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 45,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 46,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 47,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 48,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 49,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 50,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 51,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 52,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 53,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 54,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 55,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 56,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 57,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 59,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 61,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 62,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 63,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 64,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 65,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 66,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 67,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 68,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 69,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 70,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 71,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 72,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 73,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 74,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 75,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 76,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 77,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 78,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 79,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 80,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 81,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 82,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 83,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 84,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "neighbor            │v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \n  │ log             │t\nneighbor            │plain",
+    "offset": 108,
+    "expected": "v_{\\mathrm{pred}} = v_{\\mathrm{prev}} + a_{\\mathrm{world}}\\Delta \nt"
+  },
+  {
+    "text": "x = \\Delta\ny = \\beta",
+    "offset": 16,
+    "expected": "y = \\beta"
+  },
+  {
+    "text": "$$\\begin{bmatrix}\n\\text{a\\\nb}\n\\end{bmatrix}$$",
+    "offset": 11,
+    "expected": "$$\\begin{bmatrix}\n\\text{a\\\nb}\n\\end{bmatrix}$$"
+  },
+  {
+    "text": "$$\\begin{aligned}\n{a &= b \\[8pt]\nc}\n\\end{aligned}$$",
+    "offset": 9,
+    "expected": "$$\\begin{aligned}\n{a &= b \\[8pt]\nc}\n\\end{aligned}$$"
+  },
+  {
+    "text": "$$\\begin{bmatrix}\n\\{a\\\nb\n\\end{bmatrix}$$",
+    "offset": 20,
+    "expected": "$$\\begin{bmatrix}\n\\{a\\\\\nb\n\\end{bmatrix}$$"
   }
 ]

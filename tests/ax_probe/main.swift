@@ -179,7 +179,7 @@ if CommandLine.arguments.contains("--show"), let (result, point) = popupSample {
     hover.anchor = NSPoint(x: point.x, y: (NSScreen.screens.first?.frame.height ?? 0) - point.y)
     hover.present(result)
     RunLoop.main.run(until: Date().addingTimeInterval(3))
-    print("Popup visible: \(hover.panel.isVisible); renderer ready: \(hover.ready)")
+    print("Popup visible: \(hover.panel.isVisible); native renderer error: \(String(describing: hover.formulaView.error))")
     if hover.panel.isVisible {
         let capture = Process()
         capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")

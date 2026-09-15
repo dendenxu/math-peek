@@ -1,7 +1,13 @@
 # iTerm2 adapter
 
-Native hover does not use this adapter or start Python. This optional adapter reads iTerm2's selected
-text, or its visible terminal viewport when nothing is selected. It does not run
+Native hover extracts formulas in Swift and renders them with SwiftMath/AppKit;
+it does not use this adapter, start Python, or create a WebKit view. Install that
+path alone with `python3 install.py --skip-iterm`. The first build downloads the
+SwiftMath revision pinned in `Package.swift` and requires Swift 5.9 or later;
+the installer includes its math font bundle for offline rendering.
+
+This optional Python adapter supplies the KaTeX reading window with iTerm2's
+selected text, or its visible terminal viewport when nothing is selected. It does not run
 commands in the terminal or require a remote SSH/tmux installation.
 
 Install with `python3 install.py` (without `--skip-iterm`), then use the private
@@ -60,6 +66,14 @@ rows. The adapter cannot recover source text that never reached iTerm2, hidden
 tmux scrollback, or the semantic boundary between adjacent tmux panes. Select a
 single pane/response, copy from the application's own transcript, or export a
 tmux pane using `tmux capture-pane -p -J -S -` when those distinctions matter.
+
+Native hover has separate, conservative pane-aware extraction. It recognizes
+delimited math and standalone raw TeX with known math commands, can rejoin split
+commands, and handles neighboring pane decorations and split junctions when the
+hovered pane's boundaries remain stable. It also repairs narrowly recognizable
+damaged row separators in matrix/aligned-style environments. It does not infer
+missing mathematical symbols, and those repairs do not turn viewport capture
+into an exact reconstruction of the original output.
 
 Visible-screen capture reads the current viewport, including when iTerm2 is
 scrolled into local history. A formula cut off above or below that viewport

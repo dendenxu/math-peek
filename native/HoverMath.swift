@@ -8,14 +8,19 @@ enum HoverMath {
         let pane = project(input, offset)
         let source = pane?.text ?? input
         let cursor = pane?.offset ?? offset
-        guard let range = expression(source, cursor, padding: pane != nil) else { return nil }
-        return repair(Array(source[range]), padding: pane != nil)
+        let delimited = expression(source, cursor, padding: pane != nil)
+        guard let range = delimited ?? bare(source, cursor) else { return nil }
+        return repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
     }
 
     private typealias Scalars = [Unicode.Scalar]
     private struct Pane { let text: Scalars; let offset: Int }
     private struct Row { let start: Int; let end: Int }
     private struct Border: Equatable { let column: Int; let index: Int }
+    private static let verticalBorders = Set((0x2500...0x257F).compactMap(Unicode.Scalar.init).filter {
+        let name = $0.properties.name ?? ""
+        return name.contains("VERTICAL") || name.contains("UP") && name.contains("DOWN")
+    })
     private static let commands = Set("""
     frac dfrac tfrac sqrt sum prod coprod int iint iiint oint lim limits nolimits
     infty partial nabla cdot times div pm mp le leq ge geq ne neq approx equiv sim
@@ -40,6 +45,126 @@ enum HoverMath {
     private static let commandPrefixes: Set<String> = {
         Set(commands.flatMap { command in (1...command.count).map { String(command.prefix($0)) } })
     }()
+    private static let rowEnvironments = Set("matrix pmatrix bmatrix Bmatrix vmatrix Vmatrix smallmatrix aligned alignedat align align* gather gathered cases array split".split(separator: " ").map(String.init))
+
+    private static func regex(_ pattern: String, _ text: String) -> [NSTextCheckingResult] {
+        (try? NSRegularExpression(pattern: pattern).matches(in: text, range: NSRange(location: 0, length: (text as NSString).length))) ?? []
+    }
+    private static func replace(_ pattern: String, _ text: String, with replacement: String) -> String {
+        (try? NSRegularExpression(pattern: pattern).stringByReplacingMatches(in: text, range: NSRange(location: 0, length: (text as NSString).length), withTemplate: replacement)) ?? text
+    }
+    private static func escapedString(_ text: String, at offset: Int) -> Bool {
+        (text as NSString).substring(to: offset).reversed().prefix(while: { $0 == "\\" }).count % 2 == 1
+    }
+    private static func repairRows(_ text: String) -> String {
+        var active: [String] = []
+        var depth = 0
+        return text.components(separatedBy: "\n").map { original in
+            var row = original
+            let rowDepth = depth
+            depth += braceBalance(original)
+            func depthAt(_ offset: Int) -> Int { rowDepth + braceBalance((original as NSString).substring(to: offset)) }
+            for match in regex(#"\\(begin|end)\{([^{}]+)\}"#, row) where !escapedString(row, at: match.range.location) {
+                let operation = (row as NSString).substring(with: match.range(at: 1))
+                let environment = (row as NSString).substring(with: match.range(at: 2))
+                if operation == "begin" { active.append(environment) }
+                else if active.last == environment { active.removeLast() }
+            }
+            guard active.contains(where: { rowEnvironments.contains($0) }) else { return row }
+            if let spacing = regex(#"\\\[([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:pt|em|ex|mm|cm|in|mu))\]\s*$"#, row).first,
+               depthAt(spacing.range.location) == 0,
+               !escapedString(row, at: spacing.range.location) {
+                row = (row as NSString).replacingCharacters(in: NSRange(location: spacing.range.location, length: 0), with: "\\")
+            } else if let ending = regex(#"\\[ \t\r]*$"#, row).first,
+                      depthAt(ending.range.location) == 0,
+                      !escapedString(row, at: ending.range.location),
+                      active.contains(where: { $0.hasSuffix("matrix") }) || regex("&", row).contains(where: { !escapedString(row, at: $0.range.location) }) {
+                row = (row as NSString).replacingCharacters(in: NSRange(location: ending.range.location, length: 0), with: "\\")
+            }
+            return row
+        }.joined(separator: "\n")
+    }
+
+    private static func bareSource(_ candidate: String) -> Bool {
+        guard !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, candidate.unicodeScalars.count <= 2048,
+              !candidate.contains(where: { "`$\"';@#".contains($0) }),
+              !candidate.unicodeScalars.contains(where: { (0x2500...0x257F).contains($0.value) }) else { return false }
+        let scalars = Array(candidate.unicodeScalars)
+        var depth = 0
+        for index in scalars.indices where !escaped(scalars, index) {
+            if scalars[index] == "{" { depth += 1 }
+            else if scalars[index] == "}" { depth -= 1 }
+            else if scalars[index] == "|" && depth <= 0 { return false }
+        }
+        var reduced = replace(#"\\(?:text|textrm|mathrm|operatorname|mathbb|mathbf|mathit|mathcal|mathsf|mathtt)\{[^{}]*\}"#, candidate, with: "x")
+        reduced = replace(#"\\[A-Za-z]+"#, reduced, with: "x")
+        guard regex(#"[A-Za-z]{3,}|[^\x00-\x7f]"#, reduced).isEmpty,
+              regex(#"\b(?:if|for|in|let|var|fn|def|return|echo|print|const)\b"#, reduced).isEmpty,
+              !regex(#"^[A-Za-z0-9\s\\{}()\[\]=+*/^_.,:!<>?&%|-]+$"#, reduced).isEmpty else { return false }
+        return true
+    }
+    private static func braceBalance(_ text: String) -> Int {
+        let scalars = Array(text.unicodeScalars)
+        return scalars.indices.reduce(0) { balance, index in
+            guard !escaped(scalars, index) else { return balance }
+            return balance + (scalars[index] == "{" ? 1 : scalars[index] == "}" ? -1 : 0)
+        }
+    }
+    private static func bareJoin(_ left: String, _ right: String) -> Bool {
+        guard bareSource(left), bareSource(right) else { return false }
+        if braceBalance(left) > 0 || !regex(#"[=+*/^_({\[,<>-]\s*$"#, left).isEmpty || !regex(#"^\s*[=+*/^_)}\],<>-]"#, right).isEmpty { return true }
+        guard let command = regex(#"\\([A-Za-z]+)[ \t\r]*$"#, left).first,
+              let rest = regex(#"^[ \t]*([A-Za-z]+)"#, right).first else { return false }
+        let prefix = (left as NSString).substring(with: command.range(at: 1))
+        let suffix = (right as NSString).substring(with: rest.range(at: 1))
+        if commands.contains(prefix), !regex(#"^[ \t]*[A-Za-z][ \t\r]*$"#, right).isEmpty { return true }
+        return !commands.contains(prefix) && commands.contains(prefix + suffix)
+    }
+    private static func bare(_ text: Scalars, _ offset: Int) -> Range<Int>? {
+        guard !insideCode(text, offset) else { return nil }
+        var start = offset, end = offset
+        while start > 0 && text[start - 1] != "\n" { start -= 1 }
+        while end < text.count && text[end] != "\n" { end += 1 }
+        for _ in 0..<3 {
+            guard start > 0 else { break }
+            var previous = start - 1
+            while previous > 0 && text[previous - 1] != "\n" { previous -= 1 }
+            guard bareJoin(string(text[previous..<(start - 1)]), string(text[start..<end])) else { break }
+            start = previous
+        }
+        for _ in 0..<3 {
+            guard end < text.count else { break }
+            var following = end + 1
+            while following < text.count && text[following] != "\n" { following += 1 }
+            guard bareJoin(string(text[start..<end]), string(text[(end + 1)..<following])) else { break }
+            end = following
+        }
+        while start < end && text[start].properties.isWhitespace { start += 1 }
+        while end > start && text[end - 1].properties.isWhitespace { end -= 1 }
+        guard start <= offset, offset < end else { return nil }
+        let candidate = repair(Array(text[start..<end]), padding: false, continuationIndent: true)
+        guard bareSource(candidate), braceBalance(candidate) == 0,
+              regex(#"\\([A-Za-z]+)"#, candidate).contains(where: { commands.contains((candidate as NSString).substring(with: $0.range(at: 1))) }),
+              !regex(#"[=+*/^_{}]"#, candidate).isEmpty else { return nil }
+        return start..<end
+    }
+    private static func insideCode(_ text: Scalars, _ offset: Int) -> Bool {
+        var index = 0
+        while index <= offset {
+            if (index == 0 || text[index - 1] == "\n"), let end = skipFence(text, index) {
+                if offset < end { return true }
+                index = end
+                continue
+            }
+            if text[index] == "`", !escaped(text, index), let end = skipCode(text, index) {
+                if offset < end { return true }
+                index = end
+                continue
+            }
+            index += 1
+        }
+        return false
+    }
 
     private static func string(_ scalars: ArraySlice<Unicode.Scalar>) -> String {
         String(String.UnicodeScalarView(scalars))
@@ -185,7 +310,7 @@ enum HoverMath {
         return nil
     }
 
-    private static func repair(_ text: Scalars, padding: Bool) -> String {
+    private static func repair(_ text: Scalars, padding: Bool, continuationIndent: Bool = false) -> String {
         var output: Scalars = []
         var previous = 0
         var start = 0
@@ -198,10 +323,11 @@ enum HoverMath {
             if commands.contains(command) { continue }
             for _ in 0..<3 {
                 var fragment = end
-                if padding { while fragment < text.count && text[fragment] == " " { fragment += 1 } }
+                if padding || continuationIndent { while fragment < text.count && text[fragment] == " " { fragment += 1 } }
                 if fragment < text.count && text[fragment] == "\r" { fragment += 1 }
                 guard fragment < text.count && text[fragment] == "\n" else { break }
                 fragment += 1
+                if continuationIndent { while fragment < text.count && (text[fragment] == " " || text[fragment] == "\t") { fragment += 1 } }
                 var finish = fragment
                 while finish < text.count && letter(text[finish]) { finish += 1 }
                 guard finish > fragment else { break }
@@ -264,7 +390,7 @@ enum HoverMath {
                     rejected.insert(rowIndex)
                     return nil
                 }
-                if v == 0x2502 || v == 0x2503 || v == 0x2551 { borders.append(Border(column: column, index: i)) }
+                if verticalBorders.contains(scalar) { borders.append(Border(column: column, index: i)) }
                 column += width(scalar)
             }
             cache[rowIndex] = borders
@@ -272,10 +398,18 @@ enum HoverMath {
         }
         guard let borders = layout(cursorRow), !borders.isEmpty,
               offset < rows[cursorRow].end, !borders.contains(where: { $0.index == offset }) else { return nil }
-        let columns = borders.map(\.column)
         let left = borders.last(where: { $0.index < offset })?.column
         let right = borders.first(where: { $0.index > offset })?.column
-        func same(_ row: Int) -> Bool { layout(row)?.map(\.column) == columns }
+        func same(_ row: Int) -> Bool {
+            guard let candidate = layout(row),
+                  left == nil || candidate.contains(where: { $0.column == left }),
+                  right == nil || candidate.contains(where: { $0.column == right }) else { return false }
+            // Ignore other panes' log decorations, but never cross a new border
+            // inside the hovered pane.
+            return !candidate.contains { border in
+                (left == nil || border.column > left!) && (right == nil || border.column < right!)
+            }
+        }
         var first = cursorRow, last = cursorRow
         while first > 0 && same(first - 1) { first -= 1 }
         while last + 1 < rows.count && same(last + 1) { last += 1 }

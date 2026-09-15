@@ -1,25 +1,23 @@
 import AppKit
 import ApplicationServices
-import WebKit
 
 final class HoverPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
 
-final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+final class HoverController: NSObject {
     var enabled = true
     var timer: Timer?
     var panel: HoverPanel!
-    var web: WKWebView!
-    var ready = false
-    var pendingFormula: String?
+    var formulaView: FormulaView!
     var lastPoint = NSPoint.zero
     var lastMovement = Date()
     var lastRead = Date.distantPast
     var reading = false
     var generation = 0
     var lastReadGeneration = -1
+    var trackingPID: pid_t?
     var lastPopupLatencyMS = 0.0
     var formula = ""
     var anchor = NSPoint.zero
@@ -35,15 +33,7 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         self.report = report
         super.init()
         AXUIElementSetMessagingTimeout(system, 0.6)
-        let content = WKUserContentController()
-        content.add(self, name: "hover")
-        let config = WKWebViewConfiguration()
-        config.userContentController = content
-        web = WKWebView(frame: .zero, configuration: config)
-        web.underPageBackgroundColor = .clear
-        web.setValue(false, forKey: "drawsBackground")
-        web.navigationDelegate = self
-        panel = HoverPanel(contentRect: NSRect(x: 0, y: 0, width: 600, height: 150),
+        panel = HoverPanel(contentRect: NSRect(x: 0, y: 0, width: 40, height: 34),
                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isReleasedWhenClosed = false
         panel.level = .floating
@@ -52,6 +42,7 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hidesOnDeactivate = false
+        panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         let backdrop = NSVisualEffectView(frame: panel.contentView!.bounds)
         backdrop.material = .hudWindow
@@ -61,12 +52,17 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         backdrop.wantsLayer = true
         backdrop.layer?.cornerRadius = 10
         backdrop.layer?.masksToBounds = true
-        web.frame = backdrop.bounds
-        web.autoresizingMask = [.width, .height]
-        backdrop.addSubview(web)
+        backdrop.layer?.borderWidth = 1
+        backdrop.layer?.borderColor = NSColor(srgbRed: 80 / 255, green: 80 / 255, blue: 80 / 255, alpha: 1).cgColor
+        let tint = NSView(frame: backdrop.bounds)
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(calibratedWhite: 12 / 255, alpha: 0.14).cgColor
+        tint.autoresizingMask = [.width, .height]
+        backdrop.addSubview(tint)
+        formulaView = FormulaView(frame: backdrop.bounds)
+        formulaView.autoresizingMask = [.width, .height]
+        backdrop.addSubview(formulaView)
         panel.contentView = backdrop
-        web.loadFileURL(resources.appendingPathComponent("web/hover.html"),
-                        allowingReadAccessTo: resources.appendingPathComponent("web"))
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in self?.tick() }
     }
 
@@ -82,12 +78,17 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     }
 
     func diagnose(_ stage: String) {
-        guard Bundle.main.bundleIdentifier == "local.mathpeek.preview" else { return }
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.diagnose(stage) }
+            return
+        }
         guard stage != lastDiagnostic else { return }
         lastDiagnostic = stage
+        guard Bundle.main.bundleIdentifier == "local.mathpeek.preview" else { return }
         let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/Math Peek")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let state: [String: Any] = ["stage": stage, "trusted": AXIsProcessTrusted(), "enabled": enabled, "last_popup_latency_ms": Int(lastPopupLatencyMS),
+                                    "renderer": "swiftmath", "popup_width": Int(panel.frame.width), "popup_height": Int(panel.frame.height),
                                     "time": ISO8601DateFormatter().string(from: Date()), "pid": ProcessInfo.processInfo.processIdentifier]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]) {
             let target = directory.appendingPathComponent("hover-status.json")
@@ -99,13 +100,14 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     func setEnabled(_ value: Bool) {
         enabled = value
         generation += 1
+        lastRead = .distantPast
         if value { requestPermission() } else { hide() }
     }
 
     func hide() {
+        if !formula.isEmpty || reading { generation += 1 }
         panel.orderOut(nil)
         formula = ""
-        pendingFormula = nil
     }
 
     func tick() {
@@ -114,10 +116,23 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             lastTrust = trusted
             report?(trusted ? "悬停已开启：鼠标移到 iTerm2 公式上即可预览。" : "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。")
         }
-        guard enabled, trusted else { diagnose(enabled ? "permission-required" : "disabled"); hide(); return }
-        guard NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.googlecode.iterm2" else { diagnose("waiting-for-iterm"); hide(); return }
+        guard enabled, trusted,
+              let front = NSWorkspace.shared.frontmostApplication,
+              front.bundleIdentifier == "com.googlecode.iterm2" else {
+            diagnose(!enabled ? "disabled" : !trusted ? "permission-required" : "waiting-for-iterm")
+            if trackingPID != nil {
+                trackingPID = nil
+                generation += 1
+            }
+            hide()
+            return
+        }
+        if trackingPID != front.processIdentifier {
+            trackingPID = front.processIdentifier
+            generation += 1
+            lastRead = .distantPast
+        }
         let point = NSEvent.mouseLocation
-        if panel.isVisible && panel.frame.insetBy(dx: -8, dy: -8).contains(point) { return }
         if hypot(point.x - lastPoint.x, point.y - lastPoint.y) > 2 {
             lastPoint = point
             lastMovement = Date()
@@ -125,12 +140,7 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         }
         guard Date().timeIntervalSince(lastRead) > 0.016,
               lastReadGeneration != generation || Date().timeIntervalSince(lastRead) > 0.8,
-              !reading, NSEvent.pressedMouseButtons == 0,
-              let front = NSWorkspace.shared.frontmostApplication,
-              front.bundleIdentifier == "com.googlecode.iterm2" else {
-            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier != "com.googlecode.iterm2" { hide() }
-            return
-        }
+              !reading, NSEvent.pressedMouseButtons == 0 else { return }
         lastRead = Date()
         lastReadGeneration = generation
         reading = true
@@ -141,7 +151,7 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             let result = self.readFormula(at: mousePoint, pid: processID)
             DispatchQueue.main.async {
                 self.reading = false
-                guard self.enabled, version == self.generation,
+                guard self.enabled, AXIsProcessTrusted(), version == self.generation,
                       NSWorkspace.shared.frontmostApplication?.processIdentifier == processID else { return }
                 guard let result else { self.hide(); return }
                 if self.formula != result || !self.panel.isVisible {
@@ -154,8 +164,11 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     }
 
     func readFormula(at point: CGPoint, pid: pid_t) -> String? {
+        // Ask iTerm2 directly so the preview cannot intercept accessibility hits.
+        let application = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(application, 0.6)
         var hit: AXUIElement?
-        let hitError = AXUIElementCopyElementAtPosition(system, Float(point.x), Float(point.y), &hit)
+        let hitError = AXUIElementCopyElementAtPosition(application, Float(point.x), Float(point.y), &hit)
         guard hitError == .success, var element = hit else { diagnose("ax-hit-error-\(hitError.rawValue)"); return nil }
         var owner: pid_t = 0
         AXUIElementGetPid(element, &owner)
@@ -188,7 +201,11 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
            let boundsValue, CFGetTypeID(boundsValue) == AXValueGetTypeID() {
             var bounds = CGRect.zero
             if AXValueGetValue(boundsValue as! AXValue, .cgRect, &bounds),
-               !bounds.insetBy(dx: -2, dy: -2).contains(point) { diagnose("character-bounds-mismatch"); return nil }
+               !bounds.insetBy(dx: -2, dy: -2).contains(point),
+               !matchesWrappedCell(element, text: text as NSString, range: range, point: point) {
+                diagnose("character-bounds-mismatch")
+                return nil
+            }
         }
         let nsText = text as NSString
         guard range.location >= 0, range.location < nsText.length else { return nil }
@@ -204,19 +221,38 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         return formula
     }
 
+    private func matchesWrappedCell(_ element: AXUIElement, text: NSString, range: CFRange, point: CGPoint) -> Bool {
+        guard range.location > 0, range.location < text.length, range.length == 1,
+              (0x20...0x7E).contains(text.character(at: range.location)),
+              (0x20...0x7E).contains(text.character(at: range.location - 1)) else { return false }
+        var previous = CFRange(location: range.location - 1, length: 1)
+        guard let parameter = AXValueCreate(.cfRange, &previous) else { return false }
+        var value: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, kAXBoundsForRangeParameterizedAttribute as CFString,
+                                                         parameter, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return false }
+        var bounds = CGRect.zero
+        guard AXValueGetValue(value as! AXValue, .cgRect, &bounds), bounds.width > 0,
+              bounds.height > 0, bounds.width < bounds.height * 2 else { return false }
+        // iTerm2 may report a wrap-spanning rectangle for the last ASCII cell.
+        // The preceding cell supplies its actual position without relaxing pane bounds.
+        return bounds.offsetBy(dx: bounds.width, dy: 0).insetBy(dx: -2, dy: -2).contains(point)
+    }
+
     func present(_ text: String) {
-        guard ready else { pendingFormula = text; return }
-        guard let json = try? JSONSerialization.data(withJSONObject: [text]),
-              let encoded = String(data: json, encoding: .utf8) else { return }
-        web.evaluateJavaScript("window.previewFormula(...\(encoded))", completionHandler: nil)
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor) }) ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
+        let size = formulaView.render(text, maxSize: NSSize(width: min(760, visible.width - 24),
+                                                           height: min(460, visible.height - 24)))
+        resizeAndShow(width: size.width, height: size.height)
     }
 
     func resizeAndShow(width: CGFloat, height: CGFloat) {
         guard enabled, !formula.isEmpty else { return }
         let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor) }) ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
-        let w = min(max(200, width), min(760, visible.width - 24))
-        let h = min(max(48, height), min(460, visible.height - 24))
+        let w = min(max(40, width), min(760, visible.width - 24))
+        let h = min(max(34, height), min(460, visible.height - 24))
         var x = anchor.x + 18
         var y = anchor.y - h - 20
         if x + w > visible.maxX - 12 { x = visible.maxX - w - 12 }
@@ -227,19 +263,4 @@ final class HoverController: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         diagnose("popup-visible")
     }
 
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.frameInfo.isMainFrame, let body = message.body as? [String: Any] else { return }
-        if body["action"] as? String == "ready" {
-            ready = true
-            if let text = pendingFormula { pendingFormula = nil; present(text) }
-        } else if body["action"] as? String == "size",
-                  let height = body["height"] as? Double, let width = body["width"] as? Double {
-            resizeAndShow(width: width, height: height)
-        }
-    }
-
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        decisionHandler(navigationAction.request.url?.isFileURL == true && navigationAction.navigationType != .linkActivated ? .allow : .cancel)
-    }
 }

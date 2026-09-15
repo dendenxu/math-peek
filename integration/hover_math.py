@@ -24,10 +24,15 @@ _MAX_DISPLAY_CHARS = 16_384
 _MAX_DISPLAY_LINES = 80
 _MAX_INLINE_CHARS = 2_048
 _MAX_INLINE_LINES = 12
-_VERTICAL_BORDERS = frozenset("│┃║")
+_VERTICAL_BORDERS = frozenset(
+    chr(value) for value in range(0x2500, 0x2580)
+    if "VERTICAL" in unicodedata.name(chr(value), "")
+    or "UP" in unicodedata.name(chr(value), "") and "DOWN" in unicodedata.name(chr(value), "")
+)
 _BOX_DRAWING = re.compile("[\u2500-\u257f]")
 _FENCE_OPEN = re.compile(r"^((?: {0,3}>[ \t]?)* {0,3})(`{3,}|~{3,})[^\n]*(?:\n|$)")
 _LETTERS = re.compile(r"[A-Za-z]+")
+_ROW_ENVIRONMENTS = frozenset("matrix pmatrix bmatrix Bmatrix vmatrix Vmatrix smallmatrix aligned alignedat align align* gather gathered cases array split".split())
 
 # This is intentionally bounded: absence from the set means no reconstruction.
 _KNOWN_COMMANDS = frozenset("""
@@ -76,7 +81,7 @@ def _across_wrap(text: str, index: int, step: int, pane_padding: bool = False) -
     return text[index] if 0 <= index < len(text) else ""
 
 
-def _repair_commands(text: str, pane_padding: bool = False) -> str:
+def _repair_commands(text: str, pane_padding: bool = False, continuation_indent: bool = False) -> str:
     output: list[str] = []
     previous = 0
     for slash in re.finditer(r"\\(?=[A-Za-z])", text):
@@ -92,7 +97,7 @@ def _repair_commands(text: str, pane_padding: bool = False) -> str:
         for _ in range(3):
             # tmux's AX rows include cell padding up to the pane border. Only
             # disregard it for a known command repair inside a reliable pane.
-            linebreak = re.match(r" *\r?\n" if pane_padding else r"\r?\n", text[end:])
+            linebreak = re.match((r" *\r?\n" if pane_padding or continuation_indent else r"\r?\n") + (r"[ \t]*" if continuation_indent else ""), text[end:])
             if not linebreak:
                 break
             fragment = _LETTERS.match(text, end + linebreak.end())
@@ -111,10 +116,133 @@ def _repair_commands(text: str, pane_padding: bool = False) -> str:
     return "".join(output)
 
 
+def _repair_environment_rows(text: str) -> str:
+    active: list[str] = []
+    output: list[str] = []
+    depth = 0
+    for row in text.splitlines(keepends=True):
+        depths: list[int] = []
+        for index, char in enumerate(row):
+            depths.append(depth)
+            if not _escaped(row, index):
+                depth += 1 if char == "{" else -1 if char == "}" else 0
+        for marker in re.finditer(r"\\(begin|end)\{([^{}]+)\}", row):
+            if _escaped(row, marker.start()):
+                continue
+            if marker.group(1) == "begin":
+                active.append(marker.group(2))
+            elif active and active[-1] == marker.group(2):
+                active.pop()
+        if any(environment in _ROW_ENVIRONMENTS for environment in active):
+            spacing = re.search(r"\\\[([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:pt|em|ex|mm|cm|in|mu))\]\s*$", row)
+            if spacing and depths[spacing.start()] == 0 and not _escaped(row, spacing.start()):
+                row = row[:spacing.start()] + "\\" + row[spacing.start():]
+            else:
+                ending = re.search(r"\\([ \t]*)(\r?\n)?$", row)
+                matrix = any(environment.endswith("matrix") for environment in active)
+                if ending and depths[ending.start()] == 0 and not _escaped(row, ending.start()) and (matrix or any(not _escaped(row, match.start()) for match in re.finditer("&", row))):
+                    row = row[:ending.start()] + "\\" + row[ending.start():]
+        output.append(row)
+    return "".join(output)
+
+
+def _bare_source(candidate: str) -> bool:
+    if not candidate.strip() or len(candidate) > _MAX_INLINE_CHARS or any(char in candidate for char in "`$\"';@#") or _BOX_DRAWING.search(candidate):
+        return False
+    depth = 0
+    for index, char in enumerate(candidate):
+        if _escaped(candidate, index):
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        elif char == "|" and depth <= 0:
+            return False
+    reduced = re.sub(r"\\(?:text|textrm|mathrm|operatorname|mathbb|mathbf|mathit|mathcal|mathsf|mathtt)\{[^{}]*\}", "x", candidate)
+    reduced = re.sub(r"\\[A-Za-z]+", "x", reduced)
+    if re.search(r"[A-Za-z]{3,}|[^\x00-\x7f]", reduced):
+        return False
+    if re.search(r"\b(?:if|for|in|let|var|fn|def|return|echo|print|const)\b", reduced) or not re.fullmatch(r"[A-Za-z0-9\s\\{}()\[\]=+*/^_.,:!<>?&%|-]+", reduced):
+        return False
+    return True
+
+
+def _bare_join(left: str, right: str) -> bool:
+    if not _bare_source(left) or not _bare_source(right):
+        return False
+    balance = sum((1 if char == "{" else -1) for i, char in enumerate(left) if char in "{}" and not _escaped(left, i))
+    if balance > 0 or re.search(r"[=+*/^_({\[,<>-]\s*$", left) or re.match(r"\s*[=+*/^_)}\],<>-]", right):
+        return True
+    command = re.search(r"\\([A-Za-z]+)[ \t\r]*$", left)
+    rest = re.match(r"[ \t]*([A-Za-z]+)", right)
+    if command and command.group(1) in _KNOWN_COMMANDS and re.fullmatch(r"[ \t]*[A-Za-z][ \t\r]*", right):
+        return True
+    return bool(command and rest and command.group(1) not in _KNOWN_COMMANDS and command.group(1) + rest.group(1) in _KNOWN_COMMANDS)
+
+
+def _bare_formula(text: str, offset: int) -> tuple[int, int] | None:
+    if _inside_code(text, offset):
+        return None
+    start = text.rfind("\n", 0, offset) + 1
+    end = text.find("\n", offset)
+    if end == -1:
+        end = len(text)
+    for _ in range(3):
+        previous = text.rfind("\n", 0, max(0, start - 1)) + 1
+        if start > 0 and _bare_join(text[previous:start - 1], text[start:end]):
+            start = previous
+        else:
+            break
+    for _ in range(3):
+        following = text.find("\n", end + 1)
+        if following == -1:
+            following = len(text)
+        if end < len(text) and _bare_join(text[start:end], text[end + 1:following]):
+            end = following
+        else:
+            break
+    while start < end and text[start].isspace():
+        start += 1
+    while end > start and text[end - 1].isspace():
+        end -= 1
+    candidate = _repair_commands(text[start:end], continuation_indent=True)
+    if not start <= offset < end or not _bare_source(candidate):
+        return None
+    commands = re.findall(r"\\([A-Za-z]+)", candidate)
+    balance = sum((1 if char == "{" else -1) for i, char in enumerate(candidate) if char in "{}" and not _escaped(candidate, i))
+    if balance != 0 or not any(command in _KNOWN_COMMANDS for command in commands) or not re.search(r"[=+*/^_{}]", candidate):
+        return None
+    return start, end
+
+
+def _inside_code(text: str, offset: int) -> bool:
+    index = 0
+    while index <= offset:
+        if index == 0 or text[index - 1] == "\n":
+            fence = _FENCE_OPEN.match(text[index:])
+            if fence:
+                end = _skip_fence(text, index, fence)
+                if offset < end:
+                    return True
+                index = end
+                continue
+        if text[index] == "`" and not _escaped(text, index):
+            end = _skip_code_span(text, index)
+            if end is not None:
+                if offset < end:
+                    return True
+                index = end
+                continue
+        index += 1
+    return False
+
+
 def project_visible_pane(text: str, offset: int) -> dict | None:
     """Crop a clearly repeated vertical pane layout, retaining original indices.
 
-    At least three consecutive rows must have identical Unicode border columns.
+    At least three consecutive rows must have the same hovered-pane boundaries.
+    Borders outside that pane may vary (for example, log decorations next door).
     CJK/full-width characters and ordinary wide emoji occupy two cells; combining
     marks occupy none. Complex emoji sequences and tabs cannot be mapped reliably
     without terminal font/settings information, so those layouts are rejected.
@@ -156,13 +284,16 @@ def project_visible_pane(text: str, offset: int) -> dict | None:
     current_layout = layout(cursor_row)
     if not current_layout or cursor_col in current_layout.values() or cursor_col >= len(current):
         return None
-    border_columns = tuple(current_layout)
     left = max((column for column, index in current_layout.items() if index < cursor_col), default=None)
     right = min((column for column, index in current_layout.items() if index > cursor_col), default=None)
 
     def same_layout(row_index: int) -> bool:
         candidate = layout(row_index)
-        return candidate is not None and tuple(candidate) == border_columns
+        if candidate is None or left is not None and left not in candidate or right is not None and right not in candidate:
+            return False
+        # A neighboring pane's decorations do not change this pane's boundary.
+        # New borders inside it do change the layout, so stop projection there.
+        return not any((left is None or column > left) and (right is None or column < right) for column in candidate)
 
     first = last = cursor_row
     while first > 0 and same_layout(first - 1):
@@ -295,10 +426,13 @@ def extract_hover_formula(text: str, offset: int) -> dict | None:
     source = projection["text"] if projection else text
     cursor = projection["offset"] if projection else offset
     match = _extract(source, cursor, pane_padding=bool(projection))
+    bare = match is None
+    if bare:
+        match = _bare_formula(source, cursor)
     if match is None:
         return None
     start, end = match
-    formula = _repair_commands(source[start:end], pane_padding=bool(projection))
+    formula = _repair_environment_rows(_repair_commands(source[start:end], pane_padding=bool(projection), continuation_indent=bare))
     if projection:
         start, end = projection["positions"][start], projection["positions"][end - 1] + 1
     return {"text": formula, "start": start, "end": end}
