@@ -1,0 +1,547 @@
+[
+  {
+    "text": "\\[\n\\begin{aligned}\na &= b \\\\\n c &= \\frac{1}{2}\n\\end{aligned}\n\\]",
+    "offset": 30,
+    "expected": "\\[\n\\begin{aligned}\na &= b \\\\\n c &= \\frac{1}{2}\n\\end{aligned}\n\\]"
+  },
+  {
+    "text": "$$\\\\fra\nc$$",
+    "offset": 4,
+    "expected": "$$\\\\fra\nc$$"
+  },
+  {
+    "text": "中文abcde│$$x+\n😀abcdefg│y+\n123456789│z$$",
+    "offset": 22,
+    "expected": "$$x+\ny+\nz$$"
+  },
+  {
+    "text": "中文abcde│$$x+\n😀abcdefg│y+\n123456789│z$$",
+    "offset": 13,
+    "expected": null
+  },
+  {
+    "text": "中文$$x+   │neighbor A\n   y+      │neighbor B\n  z$$      │neighbor C",
+    "offset": 24,
+    "expected": "$$x+   \n   y+      \n  z$$"
+  },
+  {
+    "text": "`$x$`",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "text": "`` a ` $x$ ``",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "text": "```latex\n$$x$$\n```",
+    "offset": 11,
+    "expected": null
+  },
+  {
+    "text": "~~~tex\n\\[x\\]\n~~~",
+    "offset": 9,
+    "expected": null
+  },
+  {
+    "text": "> ```\n> $x$\n> ```",
+    "offset": 9,
+    "expected": null
+  },
+  {
+    "text": "```\n$x$",
+    "offset": 5,
+    "expected": null
+  },
+  {
+    "text": "    ```\n$x$\n    ```",
+    "offset": 9,
+    "expected": null
+  },
+  {
+    "text": "`$no$` then $yes$",
+    "offset": 13,
+    "expected": "$yes$"
+  },
+  {
+    "text": "éabc│$$x+\n1234│y+\n中文│z$$",
+    "offset": 16,
+    "expected": "$$x+\ny+\nz$$"
+  },
+  {
+    "text": "👩‍💻 │$$x+\n123 │y+\n123 │z$$",
+    "offset": 7,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 7,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 11,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 19,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 33,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 50,
+    "expected": null
+  },
+  {
+    "text": "Costs $5, $10 and $20.00. Range $5-$10. Literal \\$x\\$. Then $a+b$.",
+    "offset": 61,
+    "expected": "$a+b$"
+  },
+  {
+    "text": "Price $5 today\nand $10 tomorrow",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "text": "😀 中文 $\\alpha$",
+    "offset": 7,
+    "expected": "$\\alpha$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 5,
+    "expected": "$x^2$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 6,
+    "expected": "$x^2$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 7,
+    "expected": "$x^2$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 8,
+    "expected": "$x^2$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 9,
+    "expected": "$x^2$"
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 4,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 $x^2$ trailing",
+    "offset": 10,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 5,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 6,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 7,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 8,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 9,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 10,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 11,
+    "expected": "$$a+b$$"
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 4,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 $$a+b$$ trailing",
+    "offset": 12,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 5,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 6,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 7,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 8,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 9,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 10,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 11,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 12,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 13,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 14,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 15,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 16,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 17,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 18,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 19,
+    "expected": "\\[\\frac{1}{2}\\]"
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 4,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 \\[\\frac{1}{2}\\] trailing",
+    "offset": 20,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 5,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 6,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 7,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 8,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 9,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 10,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 11,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 12,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 13,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 14,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 15,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 16,
+    "expected": "\\(\\alpha+1\\)"
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 4,
+    "expected": null
+  },
+  {
+    "text": "中文前缀 \\(\\alpha+1\\) trailing",
+    "offset": 17,
+    "expected": null
+  },
+  {
+    "text": "answer $a +\nb + c$ done",
+    "offset": 12,
+    "expected": "$a +\nb + c$"
+  },
+  {
+    "text": "$\nx\n$",
+    "offset": 2,
+    "expected": "$\nx\n$"
+  },
+  {
+    "text": "$x\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\ny$",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "text": "$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx$",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "text": "$$x\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\ny$$",
+    "offset": 3,
+    "expected": "$$x\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\ny$$"
+  },
+  {
+    "text": "prefix $$\\fra\nc{a}{b} + \\alp\nha$$ suffix",
+    "offset": 14,
+    "expected": "$$\\frac{a}{b} + \\alpha$$"
+  },
+  {
+    "text": "$$x",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "$x",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "\\[x",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "\\(x",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "x\\]",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "x$",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "$x$",
+    "offset": -1,
+    "expected": null
+  },
+  {
+    "text": "$x$",
+    "offset": 3,
+    "expected": null
+  },
+  {
+    "text": "$x$",
+    "offset": 100,
+    "expected": null
+  },
+  {
+    "text": "",
+    "offset": 0,
+    "expected": null
+  },
+  {
+    "text": "$$\\oper\r\nator\r\nname{softmax}(x)$$",
+    "offset": 6,
+    "expected": "$$\\operatorname{softmax}(x)$$"
+  },
+  {
+    "text": "$$\\sin                                                                                    │ neighbor\nx$$                                                                                       │ neighbor\nplain                                                                                     │ neighbor",
+    "offset": 101,
+    "expected": "$$\\sin                                                                                    \nx$$"
+  },
+  {
+    "text": "blank    │$x$\nblank    │$x$\nblank    │$x$",
+    "offset": 0,
+    "expected": null
+  },
+  {
+    "text": "blank    │$x$\nblank    │$x$\nblank    │$x$",
+    "offset": 11,
+    "expected": "$x$"
+  },
+  {
+    "text": "$$\\fra                                                                                    │ neighboring pane\nc{1}{2} + \\text{hello                                                                     │ neighboring pane\nworld}$$                                                                                  │ neighboring pane",
+    "offset": 109,
+    "expected": "$$\\frac{1}{2} + \\text{hello                                                                     \nworld}$$"
+  },
+  {
+    "text": "$$\\fra                                                                                    \nc{1}{2}$$",
+    "offset": 4,
+    "expected": "$$\\fra                                                                                    \nc{1}{2}$$"
+  },
+  {
+    "text": "$x$ then $x$ and $y$",
+    "offset": 10,
+    "expected": "$x$"
+  },
+  {
+    "text": "$x$ then $x$ and $y$",
+    "offset": 18,
+    "expected": "$y$"
+  },
+  {
+    "text": "$x$ then $x$ and $y$",
+    "offset": 5,
+    "expected": null
+  },
+  {
+    "text": "$$ 1+\\fra│ other $bad$\nc{1}{2} +│ other $bad$\n x$$     │ other $bad$",
+    "offset": 23,
+    "expected": "$$ 1+\\frac{1}{2} +\n x$$"
+  },
+  {
+    "text": "left     │$$x+\nleft     │y+\nleft     │z$$",
+    "offset": 25,
+    "expected": "$$x+\ny+\nz$$"
+  },
+  {
+    "text": "left     │$$x+\nleft     │y+\nleft     │z$$",
+    "offset": 9,
+    "expected": null
+  },
+  {
+    "text": "$x                                                                                        │ neighbor\n$                                                                                         │ neighbor\nplain                                                                                     │ neighbor",
+    "offset": 1,
+    "expected": "$x                                                                                        \n$"
+  },
+  {
+    "text": "$x                                                                                        \n$",
+    "offset": 1,
+    "expected": null
+  },
+  {
+    "text": "$                                                                                         │ neighbor\nx$                                                                                        │ neighbor\nplain                                                                                     │ neighbor",
+    "offset": 101,
+    "expected": "$                                                                                         \nx$"
+  },
+  {
+    "text": "$                                                                                         \nx$",
+    "offset": 91,
+    "expected": null
+  },
+  {
+    "text": "$$x │ neighbor\ny$$ │ neighbor",
+    "offset": 3,
+    "expected": null
+  },
+  {
+    "text": "$$x │ neighbor\ny$$  │ neighbor\nlast │ neighbor",
+    "offset": 3,
+    "expected": null
+  },
+  {
+    "text": "$$\\sin\nx$$",
+    "offset": 4,
+    "expected": "$$\\sin\nx$$"
+  },
+  {
+    "text": "$$\\left\narrow$$",
+    "offset": 4,
+    "expected": "$$\\left\narrow$$"
+  },
+  {
+    "text": "$$\\custom\nmacro$$",
+    "offset": 4,
+    "expected": "$$\\custom\nmacro$$"
+  },
+  {
+    "text": "$$\\fra \nc{a}{b}$$",
+    "offset": 4,
+    "expected": "$$\\fra \nc{a}{b}$$"
+  },
+  {
+    "text": "$$\\fra\n c{a}{b}$$",
+    "offset": 4,
+    "expected": "$$\\fra\n c{a}{b}$$"
+  }
+]

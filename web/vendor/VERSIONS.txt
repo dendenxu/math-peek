@@ -1,0 +1,7 @@
+Bundled from the public npm registry; no runtime CDN requests.
+
+katex 0.18.7 (MIT)
+marked 18.0.13 (MIT)
+dompurify 3.4.15 (Apache-2.0 OR MPL-2.0)
+
+Each package license is retained in its directory.

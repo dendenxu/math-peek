@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Math Peek</title>
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="vendor/marked/marked.umd.js"></script>
+  <script defer src="vendor/dompurify/purify.min.js"></script>
+  <script defer src="vendor/katex/katex.min.js"></script>
+  <script defer src="core.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">f<span>x</span></span><div><h1>Math Peek</h1><p>本地公式阅读器</p></div></div>
+      <div class="header-actions"><div class="privacy"><span></span>离线渲染</div><button id="show-setup-button" class="quiet" type="button" aria-controls="setup-panel" aria-expanded="true">设置</button></div>
+    </header>
+    <section id="setup-panel" class="setup-panel" aria-labelledby="setup-title">
+      <div class="setup-heading"><div><h2 id="setup-title">设置悬停预览</h2><p>完成后常驻菜单栏。把鼠标停在 iTerm2 公式上即可阅读。</p></div><span id="setup-progress" role="status">正在读取设置</span></div>
+      <div class="setup-steps">
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">1</span><div class="setup-step-copy"><h3>允许辅助功能访问</h3><p id="setup-permission-status">用于读取鼠标下的终端文字。</p></div><button id="setup-permission-button" type="button">允许访问</button></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">2</span><label class="setup-step-copy" for="setup-hover-toggle"><h3>开启悬停预览</h3><p>鼠标移到公式上显示，移开收起。</p></label><input id="setup-hover-toggle" type="checkbox" aria-label="开启悬停预览" disabled></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">3</span><label class="setup-step-copy" for="setup-login-toggle"><h3>登录时自动启动</h3><p id="setup-login-status">登录后在后台运行，无需打开阅读窗口。</p></label><input id="setup-login-toggle" type="checkbox" aria-label="登录时自动启动" disabled></div>
+      </div>
+      <p id="setup-error" class="setup-error" role="alert" hidden></p>
+      <div class="setup-bottom"><p id="setup-note">以后可从菜单栏打开设置或阅读窗口。</p><div class="setup-bottom-actions"><button id="open-reader-button" class="quiet" type="button">打开阅读窗口</button><button id="finish-setup-button" class="primary" type="button">完成设置，后台运行</button></div></div>
+    </section>
+    <nav class="toolbar" aria-label="预览操作">
+      <div class="actions">
+        <button id="paste-button" class="primary" type="button">粘贴并预览 <kbd>⌘V</kbd></button>
+        <button id="capture-button" type="button">读取终端</button>
+        <label id="follow-control" class="follow-control"><input id="follow-toggle" type="checkbox"><span>跟随终端</span></label>
+      </div>
+      <div class="view-actions">
+        <label class="mode-control" for="mode-select">内容<select id="mode-select"><option value="markdown">Markdown + 公式</option><option value="tex">纯 LaTeX 公式</option></select></label>
+        <button id="source-toggle" class="quiet" type="button" aria-expanded="true">隐藏源码</button>
+      </div>
+      <div id="hover-status-row" class="hover-status-row" data-trusted="unknown">
+        <span class="hover-status-light" aria-hidden="true"></span>
+        <span id="hover-status" role="status">悬停状态检查中</span>
+        <button id="hover-permission-button" type="button" hidden>允许悬停访问</button>
+      </div>
+    </nav>
+    <main id="workspace" class="workspace">
+      <section class="source-panel" aria-label="原始内容">
+        <div class="panel-heading"><h2>原始内容</h2><span id="character-count">0 字符</span></div>
+        <textarea id="source" spellcheck="false" aria-label="Markdown 或 LaTeX 源码" placeholder="粘贴终端里的回答，或者直接写一段公式…"></textarea>
+        <div class="source-hint">支持 <code>$…$</code>、<code>$$…$$</code>、<code>\(…\)</code>、<code>\[…\]</code></div>
+      </section>
+      <section class="preview-panel" aria-label="渲染预览">
+        <div class="panel-heading"><h2>阅读预览</h2><span id="formula-count">0 个公式</span></div>
+        <div id="preview-scroll" class="preview-scroll"><article id="preview" class="prose"></article></div>
+      </section>
+    </main>
+    <footer class="statusbar"><span id="status" role="status">就绪</span><button id="sample-button" type="button">查看示例</button></footer>
+  </div>
+</body>
+</html>
