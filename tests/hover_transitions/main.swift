@@ -4,7 +4,8 @@ import Foundation
 import SwiftMath
 
 let regression = CommandLine.arguments.contains("--regression")
-let marker = regression ? "MATHPEEK REGRESSION DEMO" : "MATHPEEK HOVER DEMO"
+let fullFormulas = CommandLine.arguments.contains("--full-formulas")
+let marker = fullFormulas ? "MATHPEEK FULL FORMULA DEMO" : regression ? "MATHPEEK REGRESSION DEMO" : "MATHPEEK HOVER DEMO"
 
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
     var value: CFTypeRef?
@@ -18,7 +19,7 @@ func demoTextArea(_ window: AXUIElement) -> (AXUIElement, NSString)? {
         let (element, depth) = queue.removeFirst()
         if attribute(element, kAXRoleAttribute) as? String == kAXTextAreaRole,
            let value = attribute(element, kAXValueAttribute) as? String,
-           value.contains(marker), value.contains(regression ? "END REGRESSION DEMO" : "Multi-line aligned math:") {
+           value.contains(marker), value.contains(fullFormulas ? "END FULL FORMULA" : regression ? "END REGRESSION DEMO" : "Multi-line aligned math:") {
             return (element, value as NSString)
         }
         if depth < 16, let children = attribute(element, kAXChildrenAttribute) as? [AXUIElement] {
@@ -127,7 +128,8 @@ let hardWrap: Sample
 let chinese: Sample
 var aligned: [Sample] = []
 var extraRows: [Sample] = []
-if regression {
+var fullFormulaBody: String?
+if regression || fullFormulas {
     // Test physical terminal rows, including tmux wraps through LaTeX commands.
     func sectionRows(_ name: String, _ heading: String, _ next: String, _ expected: [String]) -> [Sample] {
         let start = text.range(of: heading, options: .backwards)
@@ -154,6 +156,8 @@ if regression {
             }
             while first < last && whitespace(first) { first += 1 }
             while last > first && whitespace(last - 1) { last -= 1 }
+            // A Markdown heading prefix is outside the formula's hover range.
+            if fullFormulas, content.substring(from: first).hasPrefix("# $$") { first += 2 }
             if first < last {
                 row += 1
                 for (part, offset) in [("start", first), ("middle", (first + last - 1) / 2), ("end", last - 1)] {
@@ -169,6 +173,30 @@ if regression {
         guard !result.isEmpty else { fatalError("no regression rows in \(name)") }
         return result
     }
+    if fullFormulas {
+        let mode = ["boxed", "matrices", "kalman"].first { (text as String).contains("Fixture mode: \($0)") } ?? "kalman"
+        let data = try Data(contentsOf: URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("tests/full_formula_fixtures.json"))
+        let fixtures = try JSONDecoder().decode([String: String].self, from: data)
+        guard let source = fixtures[mode] else { fatalError("missing full formula fixture") }
+        guard let complete = HoverMath.extract(text: source, offset: source.unicodeScalars.count / 2) else {
+            fatalError("complete reference formula could not be extracted")
+        }
+        var body = complete.trimmingCharacters(in: .whitespacesAndNewlines)
+        if body.hasPrefix("# $$") { body = String(body.dropFirst(2)) }
+        for (opening, closing) in [("$$", "$$"), ("\\[", "\\]")] {
+            if body.hasPrefix(opening) && body.hasSuffix(closing) {
+                body = String(body.dropFirst(opening.count).dropLast(closing.count))
+                break
+            }
+        }
+        fullFormulaBody = mode == "boxed" ? #"K = \frac{P}{P+R}"# : body
+        let environment = mode == "matrices" ? "bmatrix" : "aligned"
+        let fragments = mode == "boxed" ? ["K", #"\frac{P}{P+R}"#] : ["\\begin{\(environment)}", "\\end{\(environment)}"]
+        aligned = sectionRows("full-\(mode)", "Full formula:", "END FULL FORMULA", fragments)
+        inline = sample("tiny-reset", "Tiny reset:", "$x$", ["$x$"])
+        hardWrap = aligned[0]
+        chinese = aligned[aligned.count / 2]
+    } else {
     let velocity = ["v_{\\mathrm{pred}}", "v_{\\mathrm{prev}}", "a_{\\mathrm{world}}", "\\Delta t"]
     let delimited = sectionRows("delimited-velocity", "Delimited velocity:", "Raw velocity (tmux wraps this line):", velocity)
     let raw = sectionRows("raw-velocity", "Raw velocity (tmux wraps this line):", "One-column matrix (single slash rows):", velocity)
@@ -178,6 +206,7 @@ if regression {
     hardWrap = raw[1]
     chinese = matrix[1]
     extraRows = delimited + raw + matrix
+    }
 } else {
     let alignedExpected = ["\\begin{aligned}", "a &= b+c", "\\sqrt{\\frac{1}{2}}", "\\end{aligned}"]
     inline = sample("inline", "Inline:", "\\pi", ["$e^{i\\pi}+1=0$"])
@@ -229,7 +258,9 @@ func nativeRendering() -> (source: String, valid: Bool, size: NSSize) {
             let display = label.displayList
             let fits = size.width <= label.bounds.width + 1 && size.height <= label.bounds.height + 1 &&
                 display != nil && display!.width <= label.bounds.width + 1 && display!.ascent + display!.descent <= label.bounds.height + 1
-            return (label.latex, !label.isHidden && label.error == nil && fits, size)
+            let parentFits = hover.formulaView.frame == hover.panel.contentView?.bounds &&
+                hover.formulaView.bounds.contains(label.frame)
+            return (label.latex, !label.isHidden && label.error == nil && fits && parentFits, size)
         }
         queue.append(contentsOf: view.subviews)
     }
@@ -263,8 +294,12 @@ func diagnoseFailure(_ target: Sample) {
     }
     let latency = Int(Date().timeIntervalSince(began) * 1000)
     let rendered = nativeRendering()
-    let expectedBody = target.expected.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "$")) }
-    let pass = updated && rendered.valid && correct(rendered.source, expectedBody)
+    let expectedBody = target.expected.map { FormulaView.normalizedRowSpacing($0.trimmingCharacters(in: CharacterSet(charactersIn: "$"))) }
+    var pass = updated && rendered.valid && correct(rendered.source, expectedBody)
+    if fullFormulas, target.name != "tiny-reset", let expected = fullFormulaBody {
+        func compact(_ source: String) -> String { source.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression) }
+        pass = pass && compact(rendered.source) == compact(FormulaView.normalizedRowSpacing(expected))
+    }
     let status = target.observeOnly ? "OBSERVE" : (pass ? "PASS" : "FAIL")
     if !target.observeOnly { checked += 1; if !pass { failed += 1 } }
     print("\(status) \(label ?? target.name): \(latency)ms visible=\(hover.panel.isVisible) frame=\(hover.panel.frame) contentSize=\(rendered.size) renderedOK=\(rendered.valid) popupLatency=\(hover.lastPopupLatencyMS) formula=\(String(reflecting: hover.formula)) rendered=\(String(reflecting: rendered.source))")

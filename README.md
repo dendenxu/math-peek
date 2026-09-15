@@ -65,6 +65,7 @@ It also recognizes standalone raw TeX such as `\frac{a}{b}` and
 continuations. Raw detection requires known math commands and a formula-shaped
 line; it deliberately avoids guessing from ordinary prose or shell commands.
 Matrices and `aligned` environments work within SwiftMath's supported syntax.
+An outer `\boxed{...}` renders with a native outline around the formula.
 Code spans and fenced code blocks are excluded; ambiguous currency is handled
 conservatively. Unsupported math syntax is displayed as its original source.
 
@@ -120,12 +121,16 @@ vertical pane borders allow extraction from one pane, including ordinary CJK
 and wide characters. Extra `│` decorations in a neighboring pane and horizontal
 split junctions such as `┤` do not interrupt the hovered pane's formula. A new
 border inside the hovered pane still stops extraction across that boundary.
+An orphan `$$` left by a formula that scrolled off screen does not consume the
+next formula's opening delimiter across a heading or explanatory prose.
 
 Repairs are intentionally narrow: within matrix or aligned-style environments,
 a lone trailing backslash on a recognizable row, or a damaged `\[8pt]` spacing
 marker at the end of a row, can be restored to a TeX line break. Existing valid
 line breaks are preserved. Missing mathematical symbols or operators are not
 inferred from context.
+The native renderer uses its default row spacing for `\\[8pt]`-style breaks;
+unsupported spacing options are omitted instead of being drawn as math text.
 
 This is a preview overlay; it does not replace characters inside the terminal.
 Unrecognizable raw TeX, hidden tmux history, uncertain pane boundaries, and complex
@@ -182,7 +187,9 @@ scripts/test_native.sh
 The extractor suite checks parity with the Python reference. `scripts/test_native.sh`
 builds the app and verifies native rendering, including long expressions,
 multiline layout, fitting within the popup, source fallback, and successive
-formula changes. For live pointer and hover-transition checks, raise the isolated
+formula changes. Panel layout checks exercise the actual window-resizing path,
+including transitions from a tall formula to a small fraction or single symbol.
+For live pointer and hover-transition checks, raise the isolated
 demo from `tests/hover_demo.py` in iTerm2, pause the installed app's hover, and run
 `scripts/test_native.sh --live`. The probe needs Accessibility permission; live
 checks move the pointer and refuse to read a focused window without the explicit
@@ -192,6 +199,9 @@ For the agent-output regressions, put `tests/tmux_regression_demo.py` in a
 then run `scripts/test_native.sh --live --regression`. This checks wrapped raw
 TeX, damaged matrix/aligned row breaks, and a formula crossing the left panes'
 horizontal split.
+For full Kalman, matrix, and boxed examples, use `tests/tmux_full_formula_demo.py`
+(optionally `--matrices` or `--boxed`) and run
+`scripts/test_native.sh --live --full-formulas --occlusion`.
 `tests/ax_probe/main.swift` also checks extraction against the demo's actual
 accessibility text. Do not use private terminal captures as repository fixtures.
 

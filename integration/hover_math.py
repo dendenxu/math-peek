@@ -33,6 +33,7 @@ _BOX_DRAWING = re.compile("[\u2500-\u257f]")
 _FENCE_OPEN = re.compile(r"^((?: {0,3}>[ \t]?)* {0,3})(`{3,}|~{3,})[^\n]*(?:\n|$)")
 _LETTERS = re.compile(r"[A-Za-z]+")
 _ROW_ENVIRONMENTS = frozenset("matrix pmatrix bmatrix Bmatrix vmatrix Vmatrix smallmatrix aligned alignedat align align* gather gathered cases array split".split())
+_TEXT_ARGUMENTS = frozenset("text textrm textbf textit textsf texttt textnormal mbox hbox mathrm operatorname mathsf mathbf mathit mathbb mathcal".split())
 
 # This is intentionally bounded: absence from the set means no reconstruction.
 _KNOWN_COMMANDS = frozenset("""
@@ -144,6 +145,27 @@ def _repair_environment_rows(text: str) -> str:
                     row = row[:ending.start()] + "\\" + row[ending.start():]
         output.append(row)
     return "".join(output)
+
+
+def _display_contains_prose(body: str, pane_padding: bool = False) -> bool:
+    # Repair before masking text arguments: a wrapped command is still math.
+    body = _repair_commands(body, pane_padding=pane_padding)
+    masked = list(body)
+    for command in re.finditer(r"\\([A-Za-z]+)\s*\{", body):
+        if command.group(1) not in _TEXT_ARGUMENTS or _escaped(body, command.start()):
+            continue
+        depth = 1
+        end = command.end()
+        while end < len(body) and depth:
+            if not _escaped(body, end):
+                depth += 1 if body[end] == "{" else -1 if body[end] == "}" else 0
+            end += 1
+        if depth == 0:
+            for index in range(command.start(), end):
+                if masked[index] not in "\r\n":
+                    masked[index] = " "
+    source = re.sub(r"\\[A-Za-z]+", "x", "".join(masked))
+    return bool(re.search(r"(?m)^[ \t]{0,3}#{1,6}(?:[ \t]|$)|^[ \t]*(?:[A-Za-z]{3,}(?:[ \t]+[A-Za-z]+)+[.?:]|[A-Za-z]{3,}:)[ \t]*$|[\u3400-\u9fff]{2,}", source))
 
 
 def _bare_source(candidate: str) -> bool:
@@ -368,6 +390,10 @@ def _closing(text: str, opening: str, closing: str, start: int, pane_padding: bo
                 return None
         body = text[start + len(opening):end]
         if not body.strip() or body.count("\n") >= max_lines or _BOX_DRAWING.search(body) or "`" in body:
+            return None
+        # A clipped preceding formula may leave an orphan closing $$. Do not
+        # pair that delimiter with a new opener across headings or prose.
+        if opening == "$$" and _display_contains_prose(body, pane_padding=pane_padding):
             return None
         return end
 

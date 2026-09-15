@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import unittest
+import unicodedata
 
 
 MODULE = Path(__file__).resolve().parents[1] / "integration" / "hover_math.py"
@@ -14,6 +15,41 @@ extract = hover_math.extract_hover_formula
 
 
 class HoverMathTests(unittest.TestCase):
+    @staticmethod
+    def tmux_right_pane(source):
+        rows = []
+        positions = []
+        total = 0
+        source_position = 0
+        for index, line in enumerate(source.splitlines(keepends=True)):
+            content = line.rstrip("\r\n")
+            if index in (7, 21, 39):
+                neighbor, boundary = "─" * 116, "┤"
+            else:
+                neighbor = ["邻窗格：普通日志", "│ name │ result │", "├──────┼────────┤", "│ item │ $z=99$ │", "", "  │ task completed"][index % 6]
+                display_width = sum(0 if unicodedata.combining(char) else 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1 for char in neighbor)
+                neighbor += " " * (116 - display_width)
+                boundary = "│"
+            prefix = neighbor + boundary + "  "
+            rows.append(prefix + content)
+            for column in range(len(content)):
+                positions.append((source_position + column, total + len(prefix) + column))
+            source_position += len(line)
+            total += len(rows[-1]) + 1
+        return "\n".join(rows), dict(positions)
+
+    def assert_formula_points(self, source, start, end, expected, pane=False):
+        text, positions = self.tmux_right_pane(source) if pane else (source, {index: index for index in range(len(source))})
+        if pane:
+            expected = expected.replace("\n", "\n  ")
+        for index in range(start, end):
+            if source[index].isspace():
+                continue
+            with self.subTest(offset=index, pane=pane):
+                result = extract(text, positions[index])
+                self.assertIsNotNone(result)
+                self.assertEqual(result["text"], expected)
+
     def test_cli_accepts_one_json_request_and_returns_nullable_json(self):
         for text, offset, expected in (("前缀 $x$", 5, "$x$"), ("plain text", 1, None)):
             result = subprocess.run([sys.executable, str(MODULE)], input=json.dumps({"text": text, "offset": offset}), text=True, capture_output=True, check=True)
@@ -300,6 +336,73 @@ class HoverMathTests(unittest.TestCase):
                 self.assertEqual(extract(source, source.index("a"))["text"], source)
         escaped_brace = "$$\\begin{bmatrix}\n\\{a\\\nb\n\\end{bmatrix}$$"
         self.assertEqual(extract(escaped_brace, escaped_brace.index("a\\"))["text"], escaped_brace.replace("a\\\n", "a\\\\\n"))
+
+    def test_exact_full_kalman_and_multiple_matrices_with_neighbor_tables(self):
+        directory = Path(__file__).parent / "parser_cases"
+        kalman = (directory / "kalman.tex").read_text().rstrip()
+        matrices = (directory / "matrices.tex").read_text().rstrip()
+        source = kalman + "\n\n" + matrices
+        expected_kalman = kalman.replace("\\[8pt]", "\\\\[8pt]")
+        expected_matrices = matrices[2:].replace("\\\n", "\\\\\n")
+        for pane in (False, True):
+            self.assert_formula_points(source, 0, len(kalman), expected_kalman, pane)
+            begin = len(kalman) + 2 + 2
+            self.assert_formula_points(source, begin, len(source), expected_matrices, pane)
+
+    def test_clipped_kalman_closing_dollar_does_not_consume_next_heading_formula(self):
+        directory = Path(__file__).parent / "parser_cases"
+        clipped = "\n".join((directory / "kalman.tex").read_text().splitlines()[8:])
+        matrices = (directory / "matrices.tex").read_text().rstrip()
+        for heading in ("# ", ""):
+            for prose in ("", "Next formula:", "下面是状态转移矩阵：", "This is the next formula."):
+                next_formula = heading + matrices[2:]
+                source = clipped + "\n\n" + prose + "\n\n" + next_formula
+                start = source.rfind(next_formula) + len(heading)
+                expected = matrices[2:].replace("\\\n", "\\\\\n")
+                self.assert_formula_points(source, start, len(source), expected, pane=True)
+
+    def test_small_heading_formulas_after_clipped_history_and_junctions(self):
+        formulas = [
+            "$$\nv_{\\mathrm{pred}}\n\nv_{\\mathrm{prev}}+a_{\\mathrm{world}}\\Delta t\n$$",
+            "$$\nv_{\\mathrm{est}}\n\nv_{\\mathrm{pred}}\n+\nK\\left(v_{\\mathrm{leg}}-v_{\\mathrm{pred}}\\right)\n$$",
+            "$$\nK=\\frac{\\sigma_{\\mathrm{pred}}^{2}}\n{\\sigma_{\\mathrm{pred}}^{2}+\\sigma_{\\mathrm{leg}}^{2}}\n$$",
+        ]
+        source = "\\end{aligned}\n$$\n\n下一组公式：\n" + "\n\n".join("# " + formula for formula in formulas)
+        for formula in formulas:
+            start = source.index(formula)
+            self.assert_formula_points(source, start, start + len(formula), formula, pane=True)
+
+    def test_display_prose_guard_preserves_text_arguments_and_plain_math(self):
+        for formula in (r"$$\text{Next formula:} + x$$", "$$\\text{下面是状态转移矩阵：}\n+x$$", r"$$\text{This is {nested text}.}+x$$", r"$$\mathrm{some words} + \operatorname{arg max}_x f(x)$$", "$$\nabc\n$$"):
+            self.assert_formula_points(formula, 0, len(formula), formula)
+
+    def test_display_prose_guard_preserves_products_and_factorials(self):
+        for body in ("abc def", "abc!", "abc def!"):
+            formula = "$$\n" + body + "\n+ \\frac{1}{2}\n$$"
+            for pane in (False, True):
+                self.assert_formula_points(formula, 0, len(formula), formula, pane)
+
+    def test_display_prose_guard_preserves_wrapped_text_arguments(self):
+        for gap in ("\n", "\r\n", " \n  "):
+            formula = "$$\n\\frac{1}{2} +\n\\text" + gap + "{速度估计}\n$$"
+            for pane in (False, True):
+                expected = formula.replace("\r\n", "\n") if pane else formula
+                self.assert_formula_points(formula, 0, len(formula), expected, pane)
+
+    def test_display_prose_guard_repairs_split_commands_before_classifying(self):
+        formula = "$$\n\\frac{1}{2} +\n\\te\nxt{速度估计}\n$$"
+        expected = formula.replace("\\te\nxt", "\\text")
+        self.assert_formula_points(formula, 0, len(formula), expected)
+        rows = ["neighbor│" + row.ljust(32) for row in formula.splitlines()]
+        text = "\n".join(rows)
+        expected_pane = "\n".join(row.ljust(32) for row in formula.splitlines())
+        expected_pane = expected_pane.replace("\\te".ljust(32) + "\nxt", "\\text").rstrip()
+        offset = 0
+        for row in rows:
+            for column in range(len("neighbor│"), len(row)):
+                if not row[column].isspace():
+                    self.assertEqual(extract(text, offset + column)["text"], expected_pane)
+            offset += len(row) + 1
 
 
 if __name__ == "__main__":

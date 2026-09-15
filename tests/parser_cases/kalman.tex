@@ -1,0 +1,34 @@
+$$
+\begin{aligned}
+\hat{\mathbf{x}}{t|t-1}
+&= \mathbf{A}\hat{\mathbf{x}}{t-1|t-1}
+
+- \mathbf{B}\mathbf{u}{t-1}
+  \[8pt]
+  \mathbf{P}{t|t-1}
+  &= \mathbf{A}\mathbf{P}_{t-1|t-1}\mathbf{A}^{\mathsf T}
+
+- \mathbf{Q}
+  \[8pt]
+  \mathbf{r}_t
+  &= \mathbf{z}t-\mathbf{H}\hat{\mathbf{x}}{t|t-1}
+  \[8pt]
+  \mathbf{S}t
+  &= \mathbf{H}\mathbf{P}{t|t-1}\mathbf{H}^{\mathsf T}
+
+- \mathbf{R}
+  \[8pt]
+  \mathbf{K}t
+  &= \mathbf{P}{t|t-1}\mathbf{H}^{\mathsf T}\mathbf{S}t^{-1}
+  \[8pt]
+  \hat{\mathbf{x}}{t|t}
+  &= \hat{\mathbf{x}}_{t|t-1}+\mathbf{K}_t\mathbf{r}t
+  \[8pt]
+  \mathbf{P}{t|t}
+  &= (\mathbf{I}-\mathbf{K}t\mathbf{H})
+  \mathbf{P}{t|t-1}
+  (\mathbf{I}-\mathbf{K}_t\mathbf{H})^{\mathsf T}
+
+- \mathbf{K}_t\mathbf{R}\mathbf{K}_t^{\mathsf T}
+  \end{aligned}
+  $$

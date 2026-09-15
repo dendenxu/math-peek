@@ -46,6 +46,7 @@ enum HoverMath {
         Set(commands.flatMap { command in (1...command.count).map { String(command.prefix($0)) } })
     }()
     private static let rowEnvironments = Set("matrix pmatrix bmatrix Bmatrix vmatrix Vmatrix smallmatrix aligned alignedat align align* gather gathered cases array split".split(separator: " ").map(String.init))
+    private static let textArguments = Set("text textrm textbf textit textsf texttt textnormal mbox hbox mathrm operatorname mathsf mathbf mathit mathbb mathcal".split(separator: " ").map(String.init))
 
     private static func regex(_ pattern: String, _ text: String) -> [NSTextCheckingResult] {
         (try? NSRegularExpression(pattern: pattern).matches(in: text, range: NSRange(location: 0, length: (text as NSString).length))) ?? []
@@ -83,6 +84,36 @@ enum HoverMath {
             }
             return row
         }.joined(separator: "\n")
+    }
+
+    private static func displayContainsProse(_ source: Scalars, padding: Bool) -> Bool {
+        // Inspect repaired commands so a tmux wrap inside \text cannot expose
+        // its argument as apparent prose and discard the surrounding formula.
+        let body = Array(repair(source, padding: padding).unicodeScalars)
+        var masked = body
+        var index = 0
+        while index < body.count {
+            defer { index += 1 }
+            guard body[index] == "\\", !escaped(body, index) else { continue }
+            var nameEnd = index + 1
+            while nameEnd < body.count && letter(body[nameEnd]) { nameEnd += 1 }
+            guard textArguments.contains(string(body[(index + 1)..<nameEnd])) else { continue }
+            var start = nameEnd
+            while start < body.count && body[start].properties.isWhitespace { start += 1 }
+            guard start < body.count && body[start] == "{" else { continue }
+            var depth = 1
+            var end = start + 1
+            while end < body.count && depth != 0 {
+                if !escaped(body, end) { depth += body[end] == "{" ? 1 : body[end] == "}" ? -1 : 0 }
+                end += 1
+            }
+            if depth == 0 {
+                for position in index..<end where !newline(masked[position]) { masked[position] = " " }
+                index = end - 1
+            }
+        }
+        let prose = replace(#"\\[A-Za-z]+"#, string(masked), with: "x")
+        return !regex(#"(?m)^[ \t]{0,3}#{1,6}(?:[ \t]|$)|^[ \t]*(?:[A-Za-z]{3,}(?:[ \t]+[A-Za-z]+)+[.?:]|[A-Za-z]{3,}:)[ \t]*$|[\u3400-\u9fff]{2,}"#, prose).isEmpty
     }
 
     private static func bareSource(_ candidate: String) -> Bool {
@@ -225,6 +256,9 @@ enum HoverMath {
             guard body.contains(where: { !$0.properties.isWhitespace }),
                   body.reduce(0, { $0 + ($1 == "\n" ? 1 : 0) }) < (inline ? 12 : 80),
                   !body.contains(where: { (0x2500...0x257F).contains($0.value) || $0 == "`" }) else { return nil }
+            // An orphan closing $$ from clipped history must not consume the
+            // next opening delimiter across intervening headings or prose.
+            if opening == ["$", "$"], displayContainsProse(Array(body), padding: padding) { return nil }
             return end
         }
         return nil

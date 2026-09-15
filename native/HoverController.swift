@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 
-final class HoverPanel: NSPanel {
+class HoverPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
@@ -60,7 +60,9 @@ final class HoverController: NSObject {
         tint.autoresizingMask = [.width, .height]
         backdrop.addSubview(tint)
         formulaView = FormulaView(frame: backdrop.bounds)
-        formulaView.autoresizingMask = [.width, .height]
+        // render() sizes the view before the panel changes. Autoresizing here
+        // would apply the panel's size delta a second time and clip smaller math.
+        formulaView.autoresizingMask = []
         backdrop.addSubview(formulaView)
         panel.contentView = backdrop
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in self?.tick() }
