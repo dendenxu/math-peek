@@ -7,14 +7,21 @@ live=false
 occlusion=false
 regression=false
 full_formulas=false
-for argument in "$@"; do
-    case "$argument" in
+bundle_id="com.googlecode.iterm2"
+marker=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --live) live=true ;;
         --occlusion) occlusion=true ;;
         --regression) regression=true ;;
         --full-formulas) full_formulas=true ;;
-        *) echo "Usage: scripts/test_native.sh [--live] [--regression|--full-formulas] [--occlusion]" >&2; exit 2 ;;
+        --bundle-id|--marker)
+            [[ $# -ge 2 ]] || { echo "$1 requires a value" >&2; exit 2; }
+            if [[ "$1" == --bundle-id ]]; then bundle_id="$2"; else marker="$2"; fi
+            shift ;;
+        *) echo "Usage: scripts/test_native.sh [--live] [--regression|--full-formulas] [--occlusion] [--bundle-id ID] [--marker TEXT]" >&2; exit 2 ;;
     esac
+    shift
 done
 if $occlusion && ! $live; then
     echo "--occlusion requires --live" >&2
@@ -35,6 +42,8 @@ fi
 
 swift build -c release --product MathPeek
 bin_dir="$(swift build -c release --show-bin-path)"
+xcrun swiftc native/HoverApplications.swift tests/hover_applications/main.swift -o "$bin_dir/hover-applications-tests"
+"$bin_dir/hover-applications-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
 module_dir="$bin_dir/Modules"
 # Swift 6.3's default build engine emits one combined dependency object.
@@ -63,7 +72,8 @@ xcrun swiftc -O -I "$module_dir" \
 "$bin_dir/native-rendering-tests"
 "$bin_dir/panel-layout-tests"
 if $live; then
-    live_arguments=(--run)
+    live_arguments=(--run --bundle-id "$bundle_id")
+    if [[ -n "$marker" ]]; then live_arguments+=(--marker "$marker"); fi
     if $occlusion; then live_arguments+=(--occlusion); fi
     if $regression; then live_arguments+=(--regression); fi
     if $full_formulas; then live_arguments+=(--full-formulas); fi

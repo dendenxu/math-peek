@@ -3,6 +3,7 @@ import Carbon
 import WebKit
 import ApplicationServices
 import ServiceManagement
+import UniformTypeIdentifiers
 
 let inputLimit = 2 * 1024 * 1024
 
@@ -27,6 +28,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     var hoverMenuItem: NSMenuItem!
     var loginMenuItem: NSMenuItem!
     var statusMenuItem: NSMenuItem!
+    var hoverApplicationsMenu: NSMenu!
+    let hoverApplications = HoverApplications()
     var settingsTimer: Timer?
     var showingSetup = false
     var setupError = ""
@@ -41,7 +44,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         registerHotkey()
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
-        hover = HoverController(resources: resources, enabled: defaults.bool(forKey: "hoverEnabled")) { [weak self] message in
+        hover = HoverController(resources: resources, enabled: defaults.bool(forKey: "hoverEnabled"),
+                                allowedBundleIdentifiers: hoverApplications.enabledBundleIdentifiers) { [weak self] message in
             guard let self else { return }
             self.hoverStatus = message
             if self.ready { self.call("setHoverStatus", [message, AXIsProcessTrusted()]) }
@@ -124,6 +128,12 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         hoverMenuItem = NSMenuItem(title: "Hover Formula Preview", action: #selector(toggleHover), keyEquivalent: "")
         hoverMenuItem.state = .on
         menu.addItem(hoverMenuItem)
+        hoverApplicationsMenu = NSMenu(title: "Terminal Apps")
+        hoverApplicationsMenu.delegate = self
+        let applicationsItem = NSMenuItem(title: "Terminal Apps", action: nil, keyEquivalent: "")
+        applicationsItem.submenu = hoverApplicationsMenu
+        menu.addItem(applicationsItem)
+        rebuildHoverApplicationsMenu()
         menu.addItem(withTitle: "Allow Hover Access...", action: #selector(allowHover), keyEquivalent: "")
         loginMenuItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
         menu.addItem(loginMenuItem)
@@ -182,13 +192,84 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         window.performClose(nil)
     }
 
-    func menuWillOpen(_ menu: NSMenu) { refreshSetupState() }
+    func menuWillOpen(_ menu: NSMenu) {
+        if menu === hoverApplicationsMenu { rebuildHoverApplicationsMenu() }
+        refreshSetupState()
+    }
+
+    private func rebuildHoverApplicationsMenu() {
+        hoverApplicationsMenu.removeAllItems()
+        for application in hoverApplications.applications {
+            let item = NSMenuItem(title: application.displayName, action: #selector(toggleHoverApplication(_:)), keyEquivalent: "")
+            item.representedObject = application.bundleIdentifier
+            item.state = application.enabled ? .on : .off
+            item.target = self
+            hoverApplicationsMenu.addItem(item)
+        }
+        if !hoverApplications.applications.isEmpty {
+            hoverApplicationsMenu.addItem(.separator())
+            let remove = NSMenu(title: "Remove Application")
+            for application in hoverApplications.applications {
+                let item = NSMenuItem(title: application.displayName, action: #selector(removeHoverApplication(_:)), keyEquivalent: "")
+                item.representedObject = application.bundleIdentifier
+                item.target = self
+                remove.addItem(item)
+            }
+            let removeItem = NSMenuItem(title: "Remove Application", action: nil, keyEquivalent: "")
+            removeItem.submenu = remove
+            hoverApplicationsMenu.addItem(removeItem)
+        }
+        let add = NSMenuItem(title: "Add Application...", action: #selector(addHoverApplication), keyEquivalent: "")
+        add.target = self
+        hoverApplicationsMenu.addItem(add)
+    }
+
+    private func updateHoverApplications() {
+        hover.setAllowedApplications(hoverApplications.enabledBundleIdentifiers)
+        rebuildHoverApplicationsMenu()
+        refreshSetupState(force: true)
+    }
+
+    @objc private func toggleHoverApplication(_ sender: NSMenuItem) {
+        guard let identifier = sender.representedObject as? String else { return }
+        hoverApplications.setEnabled(sender.state != .on, for: identifier)
+        updateHoverApplications()
+    }
+
+    @objc private func removeHoverApplication(_ sender: NSMenuItem) {
+        guard let identifier = sender.representedObject as? String else { return }
+        hoverApplications.remove(bundleIdentifier: identifier)
+        updateHoverApplications()
+    }
+
+    @objc private func addHoverApplication() {
+        let picker = NSOpenPanel()
+        picker.title = "Add a Terminal Application"
+        picker.message = "Choose an application with accessible terminal text and character positions."
+        picker.allowedContentTypes = [.applicationBundle]
+        picker.canChooseDirectories = false
+        picker.allowsMultipleSelection = true
+        picker.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        NSApp.activate(ignoringOtherApps: true)
+        guard picker.runModal() == .OK else { return }
+        for url in picker.urls {
+            guard let bundle = Bundle(url: url), let identifier = bundle.bundleIdentifier,
+                  identifier != Bundle.main.bundleIdentifier else { continue }
+            let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+                ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
+                ?? url.deletingPathExtension().lastPathComponent
+            hoverApplications.add(bundleIdentifier: identifier, displayName: name)
+        }
+        updateHoverApplications()
+    }
 
     func refreshSetupState(force: Bool = false) {
         guard hover != nil else { return }
         let trusted = AXIsProcessTrusted()
         let login = SMAppService.mainApp.status
-        let summary = !hover.enabled ? "Hover paused" : trusted ? "Hover ready - iTerm2" : "Accessibility permission required"
+        let applicationCount = hoverApplications.enabledBundleIdentifiers.count
+        let summary = !hover.enabled ? "Hover paused" : applicationCount == 0 ? "No terminal apps enabled"
+            : !trusted ? "Accessibility permission required" : hover.captureIssue ?? "Hover ready - selected terminal apps"
         statusMenuItem.title = summary
         statusItem.button?.toolTip = "Math Peek - \(summary)"
         hoverMenuItem.state = hover.enabled ? .on : .off
@@ -196,7 +277,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         let state: [String: Any] = ["trusted": trusted, "hoverEnabled": hover.enabled,
             "loginEnabled": login == .enabled, "loginNeedsApproval": login == .requiresApproval,
             "setupComplete": defaults.bool(forKey: "setupComplete"), "setupError": setupError,
-            "readerLoaded": web != nil]
+            "readerLoaded": web != nil, "hoverApplicationCount": applicationCount]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
         guard force || serialized != lastSetupState else { return }

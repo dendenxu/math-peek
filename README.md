@@ -2,7 +2,7 @@
 
 # Math Peek
 
-Hover over LaTeX in iTerm2 and read the rendered formula in a small macOS popup.
+Hover over LaTeX in compatible terminal apps and read the rendered formula in a small macOS popup.
 No selection, remote installation, terminal image protocol, or Python process
 is needed for hover. Math Peek reads local accessibility text, extracts formulas
 in compiled Swift, and renders them with SwiftMath using AppKit and CoreText.
@@ -58,7 +58,7 @@ it in **System Settings > General > Login Items**.
 
 ## Use
 
-Bring iTerm2 to the foreground and move the pointer onto a formula. Move away to
+Bring an enabled terminal app to the foreground and move the pointer onto a formula. Move away to
 dismiss the popup. Hover recognizes `$...$`, `$$...$$`, `\(...\)`, and `\[...\]`.
 It also recognizes standalone raw TeX such as `\frac{a}{b}` and
 `v_{\mathrm{pred}} = a_{\mathrm{world}}\Delta t`, including clear wrapped
@@ -72,6 +72,7 @@ conservatively. Unsupported math syntax is displayed as its original source.
 | Control | Action |
 | --- | --- |
 | Menu bar `M∑ > Hover Formula Preview` | Enable or disable hover |
+| Menu bar `M∑ > Terminal Apps` | Add, enable, disable, or remove a terminal application |
 | Control-Command-M in iTerm2 | Open the selection, or visible screen, in the reader; requires optional capture integration |
 | Control-Command-M in other apps | Preview the clipboard |
 | Preview Clipboard | Open copied text from any app or terminal |
@@ -88,11 +89,32 @@ clipboard/file content is opened.
 
 首次启动按引导允许「辅助功能」、开启悬停，并选择是否登录时自动运行；完成后应用
 留在菜单栏，不常驻 Dock 或阅读窗口。需要修改时点菜单栏 `M∑ → Setup...`。
-让 iTerm2 处于前台，把鼠标移到公式上即可预览。不用框选，没有停留等待或动画；悬停
+默认启用 iTerm2。其他终端可在菜单栏 `M∑ → Terminal Apps → Add Application...` 中选择
+对应的 `.app`，勾选启用；同一菜单可以停用或移除。让已启用的终端处于前台，把鼠标
+移到公式上即可预览。不用框选，没有停留等待或动画；悬停
 解析和渲染全部在 Swift 应用内完成，不启动 Python 或网页。SSH 和 tmux 不需要安装
 任何东西。带分隔符的公式以及含已知数学命令的独立裸 TeX 都可识别；混在普通文字里
 的裸 TeX 可以复制到阅读窗口，切换为「纯 LaTeX 公式」。浮窗按内容自适应大小，最小
 为 40 x 34 点，过大的公式等比缩放以避免内容超出边界。
+
+### Other terminal apps
+
+Math Peek remains a standalone menu-bar app. In **Terminal Apps > Add Application...**,
+select a terminal's `.app`, including a locally developed one. No Math Peek SDK,
+terminal plugin, or IPC integration is needed. The app list persists across launches;
+unchecking or removing an app immediately stops its hover preview. iTerm2 is enabled
+by default, and an intentionally empty list stays empty after restarting.
+
+Adding an app allows Math Peek to try its macOS Accessibility interface; it does
+not establish compatibility. The terminal must expose an `AXTextArea`, readable
+`AXValue`, and `AXRangeForPosition` mapping screen positions to UTF-16 text ranges.
+`AXBoundsForRange` is also used when available to verify the hit. Apps that draw
+only to a canvas or GPU surface without accessible text cannot support this path.
+The menu and setup/reader status report missing text areas or position mapping. Clipboard
+and file preview remain available independently of hover support.
+
+The iTerm2 selection/screen capture, follow mode, and its Control-Command-M behavior
+remain iTerm2-specific. Adding another app enables hover, not those optional features.
 
 ## Files, SSH, and tmux
 
@@ -114,8 +136,9 @@ ssh my-server 'cat /path/to/answer.md' | math-peek
 ssh my-server 'tmux capture-pane -p -J -S - -t session:0.0' | math-peek
 ```
 
-Hover currently targets iTerm2's accessibility interface. Native soft wraps are
-rejoined by iTerm2. For tmux, Math Peek preserves math line breaks and repairs
+Hover uses each enabled app's accessibility interface. iTerm2 rejoins its native
+soft wraps; other apps may expose different wrap or character-width behavior.
+For tmux, Math Peek preserves math line breaks and repairs
 split common commands such as `\fra` followed by `c` on the next row. Stable
 vertical pane borders allow extraction from one pane, including ordinary CJK
 and wide characters. Extra `│` decorations in a neighboring pane and horizontal
@@ -202,6 +225,9 @@ horizontal split.
 For full Kalman, matrix, and boxed examples, use `tests/tmux_full_formula_demo.py`
 (optionally `--matrices` or `--boxed`) and run
 `scripts/test_native.sh --live --full-formulas --occlusion`.
+Use `--bundle-id YOUR.APP.ID` to exercise another application displaying the isolated
+fixture. `--marker TEXT` can override its identifying marker. The harness checks only
+the target app's focused window, including app-list removal during a pending read.
 `tests/ax_probe/main.swift` also checks extraction against the demo's actual
 accessibility text. Do not use private terminal captures as repository fixtures.
 

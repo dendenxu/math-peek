@@ -20,10 +20,10 @@
       <div class="header-actions"><div class="privacy"><span></span>离线渲染</div><button id="show-setup-button" class="quiet" type="button" aria-controls="setup-panel" aria-expanded="true">设置</button></div>
     </header>
     <section id="setup-panel" class="setup-panel" aria-labelledby="setup-title">
-      <div class="setup-heading"><div><h2 id="setup-title">设置悬停预览</h2><p>完成后常驻菜单栏。把鼠标停在 iTerm2 公式上即可阅读。</p></div><span id="setup-progress" role="status">正在读取设置</span></div>
+      <div class="setup-heading"><div><h2 id="setup-title">设置悬停预览</h2><p>完成后常驻菜单栏。把鼠标停在已添加终端的公式上即可阅读。</p></div><span id="setup-progress" role="status">正在读取设置</span></div>
       <div class="setup-steps">
         <div class="setup-step"><span class="setup-number" aria-hidden="true">1</span><div class="setup-step-copy"><h3>允许辅助功能访问</h3><p id="setup-permission-status">用于读取鼠标下的终端文字。</p></div><button id="setup-permission-button" type="button">允许访问</button></div>
-        <div class="setup-step"><span class="setup-number" aria-hidden="true">2</span><label class="setup-step-copy" for="setup-hover-toggle"><h3>开启悬停预览</h3><p>鼠标移到公式上显示，移开收起。</p></label><input id="setup-hover-toggle" type="checkbox" aria-label="开启悬停预览" disabled></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">2</span><label class="setup-step-copy" for="setup-hover-toggle"><h3>开启悬停预览</h3><p>鼠标移到公式上显示，移开收起。在菜单栏 Terminal Apps 中添加其他终端。</p></label><input id="setup-hover-toggle" type="checkbox" aria-label="开启悬停预览" disabled></div>
         <div class="setup-step"><span class="setup-number" aria-hidden="true">3</span><label class="setup-step-copy" for="setup-login-toggle"><h3>登录时自动启动</h3><p id="setup-login-status">登录后在后台运行，无需打开阅读窗口。</p></label><input id="setup-login-toggle" type="checkbox" aria-label="登录时自动启动" disabled></div>
       </div>
       <p id="setup-error" class="setup-error" role="alert" hidden></p>

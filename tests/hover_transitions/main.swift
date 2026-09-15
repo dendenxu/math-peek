@@ -5,7 +5,16 @@ import SwiftMath
 
 let regression = CommandLine.arguments.contains("--regression")
 let fullFormulas = CommandLine.arguments.contains("--full-formulas")
-let marker = fullFormulas ? "MATHPEEK FULL FORMULA DEMO" : regression ? "MATHPEEK REGRESSION DEMO" : "MATHPEEK HOVER DEMO"
+func argumentValue(_ name: String) -> String? {
+    guard let index = CommandLine.arguments.firstIndex(of: name) else { return nil }
+    guard index + 1 < CommandLine.arguments.count, !CommandLine.arguments[index + 1].hasPrefix("--") else {
+        print("Missing value for \(name)")
+        exit(2)
+    }
+    return CommandLine.arguments[index + 1]
+}
+let bundleID = argumentValue("--bundle-id") ?? "com.googlecode.iterm2"
+let marker = argumentValue("--marker") ?? (fullFormulas ? "MATHPEEK FULL FORMULA DEMO" : regression ? "MATHPEEK REGRESSION DEMO" : "MATHPEEK HOVER DEMO")
 
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
     var value: CFTypeRef?
@@ -14,9 +23,12 @@ func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
 }
 
 func demoTextArea(_ window: AXUIElement) -> (AXUIElement, NSString)? {
+    guard attribute(window, kAXRoleAttribute) as? String == kAXWindowRole else { return nil }
     var queue = [(window, 0)]
-    while !queue.isEmpty {
+    var visited = 0
+    while !queue.isEmpty && visited < 2000 {
         let (element, depth) = queue.removeFirst()
+        visited += 1
         if attribute(element, kAXRoleAttribute) as? String == kAXTextAreaRole,
            let value = attribute(element, kAXValueAttribute) as? String,
            value.contains(marker), value.contains(fullFormulas ? "END FULL FORMULA" : regression ? "END REGRESSION DEMO" : "Multi-line aligned math:") {
@@ -54,20 +66,21 @@ guard CommandLine.arguments.contains("--run") else {
     print("Ready. This harness does not move the mouse without --run.")
     print("Raise only the isolated \(marker) window, pause installed Math Peek hover, then run this binary with --run.")
     print("Optional --regression selects tests/tmux_regression_demo.py; --occlusion tests a covered target separately.")
+    print("Use --bundle-id com.apple.Terminal for Terminal.app; --marker selects a custom isolated fixture marker.")
     exit(0)
 }
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 guard AXIsProcessTrusted() else { print("BLOCKED: probe lacks Accessibility permission"); exit(2) }
-guard let iterm = NSRunningApplication.runningApplications(withBundleIdentifier: "com.googlecode.iterm2").first,
-      NSWorkspace.shared.frontmostApplication?.processIdentifier == iterm.processIdentifier else {
-    print("BLOCKED: raise the isolated demo in iTerm2 first"); exit(2)
+guard let terminal = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,
+      NSWorkspace.shared.frontmostApplication?.processIdentifier == terminal.processIdentifier else {
+    print("BLOCKED: raise the isolated demo in \(bundleID) first"); exit(2)
 }
-let root = AXUIElementCreateApplication(iterm.processIdentifier)
+let root = AXUIElementCreateApplication(terminal.processIdentifier)
 AXUIElementSetMessagingTimeout(root, 1)
 guard let windowValue = attribute(root, kAXFocusedWindowAttribute), CFGetTypeID(windowValue) == AXUIElementGetTypeID(),
       let (element, text) = demoTextArea(windowValue as! AXUIElement) else {
-    print("BLOCKED: focused iTerm2 window is not the isolated demo; no other windows were read"); exit(2)
+    print("BLOCKED: focused \(bundleID) window is not the isolated demo; no other windows were read"); exit(2)
 }
 
 var recoveredPointIndices = Set<Int>()
@@ -223,7 +236,8 @@ if regression || fullFormulas {
 let primaryAligned = aligned[min(12, aligned.count - 1)]
 
 let resources = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let hover = HoverController(resources: resources, enabled: false, report: { print("controller: \($0)") })
+let hover = HoverController(resources: resources, enabled: false, allowedBundleIdentifiers: [bundleID],
+                            report: { print("controller: \($0)") })
 hover.timer?.invalidate()
 let originalPoint = CGEvent(source: nil)?.location ?? inline.point
 var failed = 0
@@ -240,7 +254,7 @@ for target in extraRows + aligned {
     guard let index = target.sourceIndex, recoveredPointIndices.contains(index),
           checkedRecoveredIndices.insert(index).inserted else { continue }
     for attempt in 1...5 {
-        let result = hover.readFormula(at: target.point, pid: iterm.processIdentifier)
+        let result = hover.readFormula(at: target.point, pid: terminal.processIdentifier)
         let pass = result.map { correct($0, target.expected) } ?? false
         checked += 1
         if !pass { failed += 1 }
@@ -281,7 +295,7 @@ func diagnoseFailure(_ target: Sample) {
     }
     let current = CGEvent(source: nil)?.location ?? .zero
     let previousStage = hover.lastDiagnostic
-    let direct = hover.readFormula(at: target.point, pid: iterm.processIdentifier)
+    let direct = hover.readFormula(at: target.point, pid: terminal.processIdentifier)
     print("DIAGNOSTIC \(target.name): target=\(target.point) actual=\(current) front=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none") sourceIndex=\(target.sourceIndex ?? -1) sourceCharacter=\(String(reflecting: character(target.sourceIndex))) axError=\(error.rawValue) axRange=\(range) axCharacter=\(String(reflecting: character(range.location))) generation=\(hover.generation) readGeneration=\(hover.lastReadGeneration) reading=\(hover.reading) stageBefore=\(previousStage) stageAfterDirect=\(hover.lastDiagnostic) direct=\(String(reflecting: direct))")
 }
 @discardableResult func visit(_ target: Sample, label: String? = nil) -> Bool {
@@ -335,6 +349,19 @@ if CommandLine.arguments.contains("--occlusion") {
     visit(primaryAligned, label: "target-covered-by-old-popup")
 }
 
+visit(inline, label: "before-app-revocation")
+hover.setAllowedApplications([])
+let revokedImmediately = !hover.panel.isVisible && hover.formula.isEmpty
+pump(0.1)
+hover.tick()
+pump(0.1)
+let revokedStaysHidden = revokedImmediately && !hover.panel.isVisible && hover.formula.isEmpty
+checked += 1
+if !revokedStaysHidden { failed += 1 }
+print("\(revokedStaysHidden ? "PASS" : "FAIL") removing-app-immediately-hides-and-prevents-reappearance")
+hover.setAllowedApplications([bundleID])
+visit(inline, label: "restoring-app-resumes-hover")
+
 hover.timer?.invalidate()
 hover.hide()
 move(inline.point)
@@ -349,6 +376,16 @@ let stayedHidden = readStarted && !hover.panel.isVisible && hover.formula.isEmpt
 checked += 1
 if !stayedHidden { failed += 1 }
 print("\(stayedHidden ? "PASS" : "FAIL") late-read-after-hide: readStarted=\(readStarted), visible=\(hover.panel.isVisible), formula=\(String(reflecting: hover.formula))")
+hover.lastRead = .distantPast
+hover.lastReadGeneration = -1
+hover.tick()
+let revokedReadStarted = hover.reading
+hover.setAllowedApplications([])
+pump(0.8)
+let revokedReadStaysHidden = revokedReadStarted && !hover.panel.isVisible && hover.formula.isEmpty
+checked += 1
+if !revokedReadStaysHidden { failed += 1 }
+print("\(revokedReadStaysHidden ? "PASS" : "FAIL") late-read-after-app-revocation: readStarted=\(revokedReadStarted), visible=\(hover.panel.isVisible), formula=\(String(reflecting: hover.formula))")
 hover.enabled = false
 hover.hide()
 move(originalPoint)

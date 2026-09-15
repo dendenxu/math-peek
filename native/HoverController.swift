@@ -24,12 +24,17 @@ final class HoverController: NSObject {
     var report: ((String) -> Void)?
     var lastDiagnostic = ""
     var lastTrust: Bool?
+    private(set) var allowedBundleIdentifiers: Set<String>
+    private(set) var captureIssue: String?
     let resources: URL
     let system = AXUIElementCreateSystemWide()
 
-    init(resources: URL, enabled: Bool = true, report: @escaping (String) -> Void) {
+    init(resources: URL, enabled: Bool = true,
+         allowedBundleIdentifiers: Set<String> = ["com.googlecode.iterm2"],
+         report: @escaping (String) -> Void) {
         self.resources = resources
         self.enabled = enabled
+        self.allowedBundleIdentifiers = allowedBundleIdentifiers
         self.report = report
         super.init()
         AXUIElementSetMessagingTimeout(system, 0.6)
@@ -75,7 +80,7 @@ final class HoverController: NSObject {
             report?("悬停预览需要在 macOS 系统设置 → 隐私与安全性 → 辅助功能中允许 Math Peek。")
         } else {
             diagnose("enabled")
-            report?("悬停已开启：鼠标移到 iTerm2 公式上即可预览。")
+            report?("悬停已开启：鼠标移到已添加终端的公式上即可预览。")
         }
     }
 
@@ -86,6 +91,27 @@ final class HoverController: NSObject {
         }
         guard stage != lastDiagnostic else { return }
         lastDiagnostic = stage
+        let previousIssue = captureIssue
+        switch stage {
+        case "no-range-for-position":
+            captureIssue = "Terminal does not expose pointer-to-text mapping"
+        case "no-text-area":
+            captureIssue = "No accessible terminal text under pointer"
+        default:
+            captureIssue = nil
+        }
+        if captureIssue != previousIssue {
+            if stage == "no-range-for-position" {
+                report?("此终端没有提供鼠标到文字的位置映射，无法自动悬停预览。")
+            } else if stage == "no-text-area" {
+                report?("鼠标所在位置没有可读取的终端文字；应用需要提供系统辅助功能文本接口。")
+            } else {
+                report?(!enabled ? "悬停预览已暂停。" : !AXIsProcessTrusted()
+                    ? "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。"
+                    : allowedBundleIdentifiers.isEmpty ? "请在 Terminal Apps 菜单中添加或启用终端应用。"
+                    : "悬停已开启：鼠标移到已添加终端的公式上即可预览。")
+            }
+        }
         guard Bundle.main.bundleIdentifier == "local.mathpeek.preview" else { return }
         let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/Math Peek")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -106,6 +132,22 @@ final class HoverController: NSObject {
         if value { requestPermission() } else { hide() }
     }
 
+    func setAllowedApplications(_ identifiers: Set<String>) {
+        guard identifiers != allowedBundleIdentifiers else { return }
+        allowedBundleIdentifiers = identifiers
+        captureIssue = nil
+        lastDiagnostic = ""
+        trackingPID = nil
+        generation += 1
+        lastRead = .distantPast
+        lastReadGeneration = -1
+        hide()
+    }
+
+    private func allows(_ application: NSRunningApplication) -> Bool {
+        application.bundleIdentifier.map { allowedBundleIdentifiers.contains($0) } ?? false
+    }
+
     func hide() {
         if !formula.isEmpty || reading { generation += 1 }
         panel.orderOut(nil)
@@ -116,12 +158,12 @@ final class HoverController: NSObject {
         let trusted = AXIsProcessTrusted()
         if lastTrust != trusted {
             lastTrust = trusted
-            report?(trusted ? "悬停已开启：鼠标移到 iTerm2 公式上即可预览。" : "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。")
+            report?(trusted ? "悬停已开启：鼠标移到已添加终端的公式上即可预览。" : "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。")
         }
         guard enabled, trusted,
               let front = NSWorkspace.shared.frontmostApplication,
-              front.bundleIdentifier == "com.googlecode.iterm2" else {
-            diagnose(!enabled ? "disabled" : !trusted ? "permission-required" : "waiting-for-iterm")
+              allows(front) else {
+            diagnose(!enabled ? "disabled" : !trusted ? "permission-required" : "waiting-for-terminal")
             if trackingPID != nil {
                 trackingPID = nil
                 generation += 1
@@ -150,11 +192,12 @@ final class HoverController: NSObject {
         let mousePoint = CGEvent(source: nil)?.location ?? CGPoint(x: point.x, y: (NSScreen.screens.first?.frame.height ?? 0) - point.y)
         let processID = front.processIdentifier
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.readFormula(at: mousePoint, pid: processID)
+            let result = self.readFormula(at: mousePoint, pid: processID, generation: version)
             DispatchQueue.main.async {
                 self.reading = false
                 guard self.enabled, AXIsProcessTrusted(), version == self.generation,
-                      NSWorkspace.shared.frontmostApplication?.processIdentifier == processID else { return }
+                      let current = NSWorkspace.shared.frontmostApplication,
+                      current.processIdentifier == processID, self.allows(current) else { return }
                 guard let result else { self.hide(); return }
                 if self.formula != result || !self.panel.isVisible {
                     self.formula = result
@@ -165,8 +208,20 @@ final class HoverController: NSObject {
         }
     }
 
-    func readFormula(at point: CGPoint, pid: pid_t) -> String? {
-        // Ask iTerm2 directly so the preview cannot intercept accessibility hits.
+    func readFormula(at point: CGPoint, pid: pid_t, generation version: Int? = nil) -> String? {
+        func diagnose(_ stage: String) {
+            if let version {
+                DispatchQueue.main.async {
+                    guard version == self.generation, self.enabled,
+                          let front = NSWorkspace.shared.frontmostApplication,
+                          front.processIdentifier == pid, self.allows(front) else { return }
+                    self.diagnose(stage)
+                }
+            } else {
+                self.diagnose(stage)
+            }
+        }
+        // Hit-test the terminal directly so the preview cannot intercept the hit.
         let application = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(application, 0.6)
         var hit: AXUIElement?
@@ -174,16 +229,18 @@ final class HoverController: NSObject {
         guard hitError == .success, var element = hit else { diagnose("ax-hit-error-\(hitError.rawValue)"); return nil }
         var owner: pid_t = 0
         AXUIElementGetPid(element, &owner)
-        guard owner == pid else { diagnose("mouse-outside-iterm"); return nil }
+        guard owner == pid else { diagnose("mouse-outside-terminal"); return nil }
+        var foundTextArea = false
         for _ in 0..<8 {
             var role: CFTypeRef?
             AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-            if role as? String == kAXTextAreaRole { break }
+            if role as? String == kAXTextAreaRole { foundTextArea = true; break }
             var parent: CFTypeRef?
             guard AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &parent) == .success,
                   let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { diagnose("no-text-area"); return nil }
             element = parent as! AXUIElement
         }
+        guard foundTextArea else { diagnose("no-text-area"); return nil }
         AXUIElementSetMessagingTimeout(element, 0.6)
         // Reading AXValue refreshes iTerm2's index map; AX offsets are UTF-16.
         var raw: CFTypeRef?
@@ -204,7 +261,8 @@ final class HoverController: NSObject {
             var bounds = CGRect.zero
             if AXValueGetValue(boundsValue as! AXValue, .cgRect, &bounds),
                !bounds.insetBy(dx: -2, dy: -2).contains(point),
-               !matchesWrappedCell(element, text: text as NSString, range: range, point: point) {
+               !(NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.googlecode.iterm2" &&
+                 matchesWrappedCell(element, text: text as NSString, range: range, point: point)) {
                 diagnose("character-bounds-mismatch")
                 return nil
             }

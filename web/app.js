@@ -84,6 +84,7 @@ $$
     setupState = {
       trusted: state.trusted === true,
       hoverEnabled: state.hoverEnabled === true,
+      hoverApplicationCount: Number.isInteger(state.hoverApplicationCount) ? state.hoverApplicationCount : 1,
       loginEnabled: state.loginEnabled === true,
       loginNeedsApproval: state.loginNeedsApproval === true,
       setupComplete: state.setupComplete === true,
@@ -96,8 +97,8 @@ $$
     document.getElementById("setup-permission-button").hidden = setupState.trusted;
     document.getElementById("setup-permission-status").textContent = setupState.trusted ? "已允许。终端文字仅在本机处理。" : "在系统设置的「辅助功能」中允许 Math Peek。";
     document.getElementById("setup-login-status").textContent = setupState.loginNeedsApproval ? "等待系统批准：请在「登录项与扩展」中允许 Math Peek。" : setupState.loginEnabled ? "已开启。下次登录时在后台运行。" : "登录后在后台运行，无需打开阅读窗口。";
-    document.getElementById("setup-progress").textContent = !setupState.trusted ? "需要辅助功能权限" : setupState.loginNeedsApproval ? "登录启动等待批准" : "已就绪";
-    document.getElementById("setup-note").textContent = !setupState.trusted ? "可先在后台运行；允许辅助功能访问后，悬停预览才会生效。" : !setupState.hoverEnabled ? "悬停预览当前已关闭，可随时从菜单栏开启。" : "以后可从菜单栏打开设置或阅读窗口。";
+    document.getElementById("setup-progress").textContent = !setupState.trusted ? "需要辅助功能权限" : setupState.hoverApplicationCount === 0 ? "尚未启用终端应用" : setupState.loginNeedsApproval ? "登录启动等待批准" : "已就绪";
+    document.getElementById("setup-note").textContent = !setupState.trusted ? "可先在后台运行；允许辅助功能访问后，悬停预览才会生效。" : !setupState.hoverEnabled ? "悬停预览当前已关闭，可随时从菜单栏开启。" : setupState.hoverApplicationCount === 0 ? "请在菜单栏 Terminal Apps 中添加或启用终端应用。" : "以后可从菜单栏打开设置或阅读窗口。";
     document.getElementById("setup-error").textContent = setupState.setupError;
     document.getElementById("setup-error").hidden = !setupState.setupError;
     updateSetupVisibility();
