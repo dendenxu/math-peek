@@ -2,8 +2,9 @@
 
 2026-09-16，实测官方 Ghostty **1.3.1 (15212)**，源码以
 [`v1.3.1`](https://github.com/ghostty-org/ghostty/tree/v1.3.1) 为准。
-这是研究记录，**不表示 Math Peek 已启用 Ghostty 悬停**。
-研究工具不进入应用构建，不改变 iTerm2、Terminal 或 cmux 的现有实现。
+这是原始研究记录。后续 **Math Peek 1.3.0 提供了需显式配对的实验悬停**，
+用法见 [README](../README.md#连接-ghostty实验模式)。本文复现的通用接口限制仍然存在；
+研究工具不进入应用构建，也不能把受控 fixture 通过等同于任意终端画面均受支持。
 
 ## 已经验证的进展
 
@@ -93,7 +94,8 @@ END
 就宣称它也支持会擦除、重绘屏幕的终端程序。外部接口也无法证明一个窗格此前从未重绘。
 
 另一个实测反例是 `SGR 8` 隐藏文字：相同公式在可见和隐藏状态下，原生文字完全相同。
-当前 `AXAttributedStringForRange` 只补充字体，没有隐藏样式。
+源码中的 `AXAttributedStringForRange` 只补充字体，没有隐藏样式；本机后续实测还会返回
+`AXErrorIllegalArgument`，因此实验适配不能依赖这个可选字体信息。
 源码还显示同步输出模式 `DECSET 2026` 下，渲染可以暂缓，而 AX 读取的是终端模型。
 这一项来自源码核对，尚未做独立的画面时序实测。
 
@@ -104,8 +106,8 @@ END
 
 ### 外部实验适配
 
-可考虑用户显式运行 `math-peek connect ghostty` 的追加式普通文本模式，但此命令
-**目前没有实现**。上线前至少还需要：
+Math Peek 1.3.0 已实现用户显式运行 `math-peek connect ghostty` 的普通文本实验模式。
+实现与后续验证需遵守以下边界：
 
 - 将随机配对标记绑定到准确的 `AXTextArea` 和 Ghostty 进程生命周期，不能按标题或窗格顺序猜。
 - 持有同一个 TTY 文件描述符，防止 `/dev/ttysNNN` 被复用；验证控制会话属于本地 Ghostty。
@@ -164,3 +166,35 @@ build/ghostty-geometry-research --report "$ghostty_report_dir/report.json"
 
 输出目录必须尚不存在。报告只包含 fixture 自己生成的文字和测量数据。运行中的探针
 同时也是终端内的 fixture，不要原地重新编译覆盖它。GUI 探针没有加入默认 CI。
+
+### 实验适配与安装版验证
+
+同一个探针提供两个可选模式。适配层模式直接调用生产代码，验证配对、公式命中、
+路径过滤、窗口尺寸变化和关闭后的解绑：
+
+```sh
+xcrun swiftc -O -D GHOSTTY_ADAPTER_LIVE \
+  shared/GhosttyProtocol.swift cli/GhosttyConnection.swift \
+  native/HoverMath.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift \
+  tests/ghostty_live/main.swift -o build/ghostty-adapter-live
+build/ghostty-adapter-live /path/to/isolated/Ghostty.app \
+  "$PWD/build/ghostty-adapter-$(date +%Y%m%d-%H%M%S)"
+```
+
+安装版模式要求 `~/Applications/Math Peek.app` 已运行并获得辅助功能权限。
+它在隔离 Ghostty 窗口中运行应用内的实际连接命令，移动鼠标到已知 fixture，
+通过窗口元数据观察真实浮窗，不截屏、不使用 OCR。若检测到用户改变焦点或移动鼠标，
+立即停止悬停检查：
+
+```sh
+xcrun swiftc -O -D GHOSTTY_INSTALLED_LIVE tests/ghostty_live/main.swift \
+  -o build/ghostty-installed-live
+build/ghostty-installed-live /path/to/isolated/Ghostty.app \
+  "$PWD/build/ghostty-installed-$(date +%Y%m%d-%H%M%S)"
+```
+
+2026-09-16 的 Math Peek 1.3.0 安装版检查通过：普通、历史、软换行和历史加软换行
+场景共 10 个公式命中，鼠标移入至检测到真实浮窗约 **27–57 ms**（10 ms 轮询采样）；
+14 个路径、空白或已知歧义位置均未弹出。适配层的读取与提取约 1–5 ms，
+这两个数字不是同一指标。更新后的原文在约 525 ms 采样中首次出现，缓存限制仍然存在。
+这些检查使用稳定的受控输出，不能推导出任意重绘界面均正确。

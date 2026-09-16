@@ -4,6 +4,7 @@ import WebKit
 import ApplicationServices
 import ServiceManagement
 import UniformTypeIdentifiers
+import TerminalBridge
 
 let inputLimit = 2 * 1024 * 1024
 
@@ -51,6 +52,10 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     private var cmuxRequestGeneration = 0
     private var pendingCmuxRequest: String?
     private let cmuxConnectionQueue = DispatchQueue(label: "local.mathpeek.cmux-connection", qos: .userInitiated)
+    private let ghosttyConnectionQueue = DispatchQueue(label: "local.mathpeek.ghostty-connection", qos: .userInitiated)
+    private var pendingGhosttyRequests: [String] = []
+    private var ghosttyRequestGeneration = 0
+    var ghosttyStatus = "Ghostty 实验悬停：请在每个本地窗格运行 math-peek connect ghostty。"
     let defaults = UserDefaults.standard
     let resources = Bundle.main.resourceURL!
 
@@ -74,6 +79,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             self.refreshSetupState()
         }
         launched = true
+        for request in pendingGhosttyRequests { connectGhostty(request) }
+        pendingGhosttyRequests = []
         if let request = pendingCmuxRequest {
             pendingCmuxRequest = nil
             connectCmux(request)
@@ -325,6 +332,12 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         let disconnect = NSMenuItem(title: "Disconnect cmux", action: #selector(disconnectCmux), keyEquivalent: "")
         disconnect.target = self
         hoverApplicationsMenu.addItem(disconnect)
+        let ghosttyConnect = NSMenuItem(title: "Connect Ghostty (Experimental)...", action: #selector(showGhosttyConnection), keyEquivalent: "")
+        ghosttyConnect.target = self
+        hoverApplicationsMenu.addItem(ghosttyConnect)
+        let ghosttyDisconnect = NSMenuItem(title: "Disconnect Ghostty", action: #selector(disconnectGhostty), keyEquivalent: "")
+        ghosttyDisconnect.target = self
+        hoverApplicationsMenu.addItem(ghosttyDisconnect)
         hoverApplicationsMenu.addItem(.separator())
         let automatic = NSMenuItem(title: "Automatically Find Terminals", action: #selector(toggleAutomaticTerminalDiscovery), keyEquivalent: "")
         automatic.state = defaults.bool(forKey: "autoDiscoverTerminals") ? .on : .off
@@ -395,6 +408,9 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         if picker.urls.contains(where: { Bundle(url: $0)?.bundleIdentifier == "com.cmuxterm.app" }) {
             alert.informativeText += "\n\ncmux 还需连接一次：在 cmux 的本地终端中运行 math-peek connect cmux。"
         }
+        if picker.urls.contains(where: { Bundle(url: $0)?.bundleIdentifier == "com.mitchellh.ghostty" }) {
+            alert.informativeText += "\n\nGhostty 实验悬停需在每个本地窗格运行 math-peek connect ghostty。无需刷新；重启 Math Peek 后需重连。适合普通输出，重绘和隐藏文字不可靠，新内容可能延迟约 500 毫秒。"
+        }
         if !hover.enabled {
             alert.informativeText += "\n\n悬停预览目前已暂停，请先在菜单中勾选 Hover Formula Preview。"
         }
@@ -447,7 +463,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
                 ["name": $0.displayName, "bundleIdentifier": $0.bundleIdentifier]
             },
             "autoDiscoverTerminals": defaults.bool(forKey: "autoDiscoverTerminals"),
-            "cmuxConnected": cmuxConnected, "cmuxStatus": cmuxStatus]
+            "cmuxConnected": cmuxConnected, "cmuxStatus": cmuxStatus,
+            "ghosttyConnectedPanes": hover.ghosttySource.connectedCount, "ghosttyStatus": ghosttyStatus]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
         guard force || serialized != lastSetupState else { return }
@@ -646,6 +663,52 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         status(cmuxStatus + "\n连接命令：math-peek connect cmux（请在 cmux 本地窗格执行，不是在 SSH 会话中）。")
     }
 
+    @objc private func showGhosttyConnection() {
+        showSetup()
+        status(ghosttyStatus + "\n在每个 Ghostty 本地窗格运行 math-peek connect ghostty，无需刷新。仅用于普通输出；重绘、隐藏文字可能误识别，新内容有约 500 毫秒缓存。重启 Math Peek、改字体或屏幕缩放后请重连。")
+    }
+
+    @objc private func disconnectGhostty() {
+        ghosttyRequestGeneration += 1
+        hover.ghosttySource.disconnect()
+        hover.generation += 1
+        hover.hide()
+        ghosttyStatus = "Ghostty 已断开。重新连接：在本地窗格运行 math-peek connect ghostty。"
+        refreshSetupState(force: true)
+    }
+
+    private func connectGhostty(_ name: String) {
+        guard GhosttyConnectionFiles.validName(name) else { return }
+        let version = ghosttyRequestGeneration
+        let connectionVersion = hover.ghosttySource.connectionVersion
+        ghosttyStatus = "正在配对 Ghostty 实验悬停，请保持原窗格可见…"
+        refreshSetupState(force: true)
+        ghosttyConnectionQueue.async {
+            var connected = false
+            var message: String
+            do {
+                let request = try GhosttyConnectionFiles.consumeRequest(name)
+                try self.hover.ghosttySource.connect(request, expectedGeneration: connectionVersion)
+                connected = true
+                message = "Connected this Ghostty pane. Hover over a complete formula to preview it."
+            } catch { message = String(describing: error) }
+            try? GhosttyConnectionFiles.writeReply(GhosttyConnectionReply(connected: connected, message: message), for: name)
+            DispatchQueue.main.async {
+                guard version == self.ghosttyRequestGeneration else { return }
+                self.ghosttyStatus = connected
+                    ? "Ghostty 当前窗格已连接（实验模式），无需刷新；仅用于普通输出，新内容可能延迟约 500 毫秒。"
+                    : "Ghostty 连接失败：" + message
+                if connected {
+                    self.hoverApplications.add(bundleIdentifier: "com.mitchellh.ghostty", displayName: "Ghostty")
+                    self.updateHoverApplications()
+                    self.hover.generation += 1
+                    self.hover.lastRead = .distantPast
+                }
+                self.refreshSetupState(force: true)
+            }
+        }
+    }
+
     @objc private func disconnectCmux() {
         cmuxRequestGeneration += 1
         let version = cmuxRequestGeneration
@@ -737,6 +800,14 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             if url.scheme == "mathpeek" {
+                if url.host == "connect-ghostty" {
+                    if let request = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                        .first(where: { $0.name == "request" })?.value, GhosttyConnectionFiles.validName(request) {
+                        if launched { connectGhostty(request) }
+                        else if pendingGhosttyRequests.count < 8 { pendingGhosttyRequests.append(request) }
+                    }
+                    continue
+                }
                 if url.host == "connect-cmux" {
                     if let request = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
                         .first(where: { $0.name == "request" })?.value {

@@ -63,6 +63,9 @@ xcrun swiftc native/CmuxSocket.swift native/CmuxConnectionStore.swift tests/cmux
 xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift \
     tests/cmux_geometry/main.swift -o "$bin_dir/cmux-geometry-tests"
 "$bin_dir/cmux-geometry-tests"
+xcrun swiftc -O shared/GhosttyProtocol.swift cli/GhosttyConnection.swift native/HoverMath.swift native/GhosttyGrid.swift \
+    tests/ghostty_adapter/main.swift -o "$bin_dir/ghostty-adapter-tests"
+"$bin_dir/ghostty-adapter-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
 # Swift 6.3's default build engine emits one combined dependency object.
 if [[ ! -f "${math_objects[0]}" && -f "$bin_dir/SwiftMath.o" ]]; then
@@ -89,11 +92,13 @@ xcrun swiftc -O -I "$module_dir" \
 xcrun swiftc -O -I "$module_dir" \
     native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
     native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
+    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift \
     tests/hover_transitions/main.swift "${math_objects[@]}" \
     -o "$bin_dir/hover-transition-tests"
 xcrun swiftc -O -I "$module_dir" \
     native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
     native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
+    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift \
     tests/panel_layout/main.swift "${math_objects[@]}" \
     -o "$bin_dir/panel-layout-tests"
 

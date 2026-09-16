@@ -58,6 +58,23 @@ func runFixture(_ root: URL) throws {
     guard string.hasPrefix("\u{1b}[6;"), string.hasSuffix("t") else { return [] }
     return string.dropFirst(4).dropLast().split(separator: ";").compactMap { Int($0) }
   }
+  #if GHOSTTY_ADAPTER_LIVE
+  guard let client = TerminalProcess.read(getpid()), let ghostty = TerminalProcess.ghosttyAncestor(of: getpid()),
+    let dimensions = TerminalDimensions.read(STDIN_FILENO), let tty = ttyname(STDIN_FILENO) else { fail("Missing local Ghostty terminal") }
+  let measuredCell = try GhosttyConnectCommand.cellSize(STDIN_FILENO)
+  var ttyMetadata = stat()
+  guard fstat(STDIN_FILENO, &ttyMetadata) == 0 else { fail("Missing TTY metadata") }
+  let pairing = GhosttyConnectionRequest(client: client, ghostty: ghostty, ttyPath: String(cString: tty),
+    ttyDevice: UInt32(bitPattern: ttyMetadata.st_rdev), session: tcgetsid(STDIN_FILENO), dimensions: dimensions,
+    cellWidthPixels: measuredCell.width, cellHeightPixels: measuredCell.height)
+  try pairing.validate()
+  let pairingName = try GhosttyConnectionFiles.writeRequest(pairing)
+  defer { GhosttyConnectionFiles.remove(pairingName) }
+  try pairingName.write(to: root.appendingPathComponent("pairing.txt"), atomically: true, encoding: .utf8)
+  output(marker + "\r\n" + pairing.marker + "\r\n")
+  let pairingDeadline = Date().addingTimeInterval(15)
+  while (try? String(contentsOf: root.appendingPathComponent("control.txt"), encoding: .utf8)) == "pairing", Date() < pairingDeadline { usleep(10_000) }
+  #endif
   var previous = ""
   let fixtureDeadline = Date().addingTimeInterval(120)
   while Date() < fixtureDeadline {
@@ -141,7 +158,19 @@ func runProbe() throws {
   try FileManager.default.createDirectory(
     at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
   let previous = NSWorkspace.shared.frontmostApplication
-  try "short".write(
+  #if GHOSTTY_INSTALLED_LIVE
+  let originalPointer = CGEvent(source: nil)!.location
+  var expectedPointer = originalPointer
+  var interrupted = false
+  guard let installed = NSRunningApplication.runningApplications(withBundleIdentifier: "local.mathpeek.preview")
+    .first(where: { $0.bundleURL?.path == NSHomeDirectory() + "/Applications/Math Peek.app" }) else { fail("Installed Math Peek must be running") }
+  #endif
+  #if GHOSTTY_ADAPTER_LIVE
+  let initialCase = "pairing"
+  #else
+  let initialCase = "short"
+  #endif
+  try initialCase.write(
     to: root.appendingPathComponent("control.txt"), atomically: true, encoding: .utf8)
   try """
   font-size = 14
@@ -162,12 +191,23 @@ func runProbe() throws {
   }
   let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
   let wrapper = root.appendingPathComponent("fixture.sh")
+  var connectCommand = ""
+  #if GHOSTTY_INSTALLED_LIVE
+  let installedCLI = NSHomeDirectory() + "/Applications/Math Peek.app/Contents/MacOS/MathPeekCLI"
+  connectCommand = shellQuote(installedCLI) + " connect ghostty 2>"
+    + shellQuote(root.appendingPathComponent("connection-error.txt").path) + " || exit 1\n"
+  #endif
   try
-    ("#!/bin/sh\nexec " + shellQuote(executable) + " --fixture " + shellQuote(root.path)
+    ("#!/bin/sh\n" + connectCommand + "exec " + shellQuote(executable) + " --fixture " + shellQuote(root.path)
     + " 2>" + shellQuote(root.appendingPathComponent("fixture-error.txt").path) + "\n")
     .write(to: wrapper, atomically: true, encoding: .utf8)
   try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: wrapper.path)
   launcher.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+  // The owned app creates a fresh local TTY; do not inherit the test runner's
+  // tmux/SSH markers into its shell.
+  var launchEnvironment = ProcessInfo.processInfo.environment
+  for key in ["TMUX", "STY", "SSH_CONNECTION", "SSH_TTY"] { launchEnvironment.removeValue(forKey: key) }
+  launcher.environment = launchEnvironment
   launcher.arguments = [
     "-n", "-a", appURL.path, "--args", "--config-default-files=false",
     "--config-file=\(root.appendingPathComponent("config").path)", "-e", wrapper.path,
@@ -188,7 +228,11 @@ func runProbe() throws {
       to: root.appendingPathComponent("control.txt"), atomically: true, encoding: .utf8)
     pause(0.3)
     if !owned.isTerminated { owned.terminate() }
+    #if GHOSTTY_INSTALLED_LIVE
+    if !interrupted { CGWarpMouseCursorPosition(originalPointer); previous?.activate(options: []) }
+    #else
     previous?.activate(options: [])
+    #endif
   }
   owned.activate(options: [])
   let app = AXUIElementCreateApplication(owned.processIdentifier)
@@ -220,6 +264,45 @@ func runProbe() throws {
       domain: "Probe", code: 1,
       userInfo: [NSLocalizedDescriptionKey: "Owned fixture text area missing"])
   }
+  #if GHOSTTY_INSTALLED_LIVE
+  func popupVisible() -> Bool {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+    return windows.contains { ($0[kCGWindowOwnerPID as String] as? Int) == Int(installed.processIdentifier) &&
+      ($0[kCGWindowLayer as String] as? Int) == Int(CGWindowLevelForKey(.floatingWindow)) &&
+      ($0[kCGWindowAlpha as String] as? Double ?? 0) > 0 }
+  }
+  func verifyPopup(_ point: CGPoint, expected: Bool, blank: CGPoint) throws {
+    func checkInteraction() throws {
+      let mouse = CGEvent(source: nil)!.location
+      guard NSWorkspace.shared.frontmostApplication?.processIdentifier == owned.processIdentifier,
+        hypot(mouse.x - expectedPointer.x, mouse.y - expectedPointer.y) < 3 else {
+        interrupted = true
+        throw NSError(domain: "Installed probe", code: 1, userInfo: [NSLocalizedDescriptionKey: "User interaction; stopping the owned-window test"])
+      }
+    }
+    func move(_ point: CGPoint) { CGWarpMouseCursorPosition(point); expectedPointer = point }
+    try checkInteraction()
+    move(blank); pause(0.12); try checkInteraction()
+    guard !popupVisible() else { throw NSError(domain: "Installed popup did not hide", code: 2) }
+    let start = ProcessInfo.processInfo.systemUptime
+    move(point)
+    var visible = false
+    repeat {
+      pause(0.01); try checkInteraction(); visible = popupVisible()
+      if visible { break }
+    } while ProcessInfo.processInfo.systemUptime - start < (expected ? 1 : 0.25)
+    print("Installed popup", expected == visible ? "PASS" : "FAIL", "expected", expected, "ms", (ProcessInfo.processInfo.systemUptime - start) * 1000)
+    guard visible == expected else { throw NSError(domain: "Installed popup", code: 3) }
+  }
+  #endif
+  #if GHOSTTY_ADAPTER_LIVE
+  let hoverSource = GhosttyHoverSource()
+  let pairingName = try String(contentsOf: root.appendingPathComponent("pairing.txt"), encoding: .utf8)
+  try hoverSource.connect(GhosttyConnectionFiles.consumeRequest(pairingName))
+  guard hoverSource.connectedCount == 1 else { fail("Production adapter did not retain the binding") }
+  guard hoverSource.read(at: .zero, element: app, pid: owned.processIdentifier).stage == "ghostty-connection-required" else { fail("Binding leaked to a different AX element") }
+  print("Production adapter paired the exact AX text area and local TTY")
+  #endif
   var scrollArea: AXUIElement?
   var ancestor = textArea
   for _ in 0..<10 {
@@ -315,6 +398,39 @@ func runProbe() throws {
     }
     pause(0.65)
     let sample = try snapshot()
+    #if GHOSTTY_ADAPTER_LIVE || GHOSTTY_INSTALLED_LIVE
+    let expectedRows: [String: (Int, Int)] = ["short": (1, 3), "history": (18, 20), "wrap": (1, 3), "history-wrap": (15, 17)]
+    if let (euler, bare) = expectedRows[name] {
+      let scale = sample["scale"] as! CGFloat
+      let cellWidth = CGFloat(ack["cell_width_px"] as! Int) / scale
+      let cellHeight = CGFloat(ack["cell_height_px"] as! Int) / scale
+      var hits: [(Int, Int, String?)] = [(euler, 10, #"$e^{i\pi}+1=0$"#), (bare, 14, #"\boxed{K = \frac{P}{P+R}}"#)]
+      if name == "wrap" || name == "history-wrap" { hits.append((name == "wrap" ? 5 : 19, 20, #"\boxed{x^2+y^2=z^2}"#)) }
+      let pathRow = name == "short" ? 4 : name == "wrap" ? 7 : 21
+      hits += [(pathRow, 18, nil), (pathRow, 57, nil), (23, 10, nil)]
+      for (row, column, formula) in hits {
+        let point = CGPoint(x: sample["view_x"] as! CGFloat + (CGFloat(column) + 0.5) * cellWidth,
+                            y: sample["view_y"] as! CGFloat + (CGFloat(row) + 0.5) * cellHeight)
+        #if GHOSTTY_ADAPTER_LIVE
+        let readStart = ProcessInfo.processInfo.systemUptime
+        let result = hoverSource.read(at: point, element: textArea, pid: owned.processIdentifier)
+        guard result.formula == formula else { throw NSError(domain: "Adapter", code: 1, userInfo: [NSLocalizedDescriptionKey: "\(name) row \(row) failed: \(result.stage)"]) }
+        print("Adapter hit", name, row, result.formula ?? "none", "ms", (ProcessInfo.processInfo.systemUptime - readStart) * 1000)
+        #else
+        try verifyPopup(point, expected: formula != nil, blank: CGPoint(x: sample["view_x"] as! CGFloat + 5, y: sample["view_y"] as! CGFloat + 5))
+        #endif
+      }
+    } else {
+      let point = CGPoint(x: sample["view_x"] as! CGFloat + 60.5 * 8.5, y: sample["view_y"] as! CGFloat + 2.5 * 18.5)
+      #if GHOSTTY_ADAPTER_LIVE
+      let result = hoverSource.read(at: point, element: textArea, pid: owned.processIdentifier)
+      guard result.formula == nil, result.stage == "ghostty-layout-unsupported" else { throw NSError(domain: "Adapter", code: 2) }
+      print("Adapter rejected known ambiguous indented wrap", name)
+      #else
+      try verifyPopup(point, expected: false, blank: CGPoint(x: sample["view_x"] as! CGFloat + 5, y: sample["view_y"] as! CGFloat + 5))
+      #endif
+    }
+    #endif
     cases.append(["case": name, "fixture": ack, "ax": sample])
     print(
       name, "lines", sample["logical_lines"]!, "height", sample["document_height"]!, "scroll",
@@ -396,10 +512,26 @@ func runProbe() throws {
       let ack = try command("history-resize")
       pause(0.65)
       report["resize"] = ["set_size_status": result.rawValue, "fixture": ack, "ax": try snapshot()]
+      #if GHOSTTY_ADAPTER_LIVE
+      let resized = try snapshot()
+      let point = CGPoint(x: resized["view_x"] as! CGFloat + 14.5 * 8.5, y: resized["view_y"] as! CGFloat + 21.5 * 18.5)
+      let hit = hoverSource.read(at: point, element: textArea, pid: owned.processIdentifier)
+      guard hit.formula == #"\boxed{K = \frac{P}{P+R}}"# else { throw NSError(domain: "Adapter resize", code: 3, userInfo: [NSLocalizedDescriptionKey: hit.stage]) }
+      hoverSource.invalidateMetrics(pid: owned.processIdentifier)
+      guard hoverSource.read(at: point, element: textArea, pid: owned.processIdentifier).stage == "ghostty-reconnect-required" else { throw NSError(domain: "Adapter font invalidation", code: 4) }
+      print("Adapter revalidated resize and suspended after font-change invalidation")
+      #endif
     }
   }
   try writeJSON(report, root.appendingPathComponent("report.json"))
   print("Report:", root.appendingPathComponent("report.json").path)
+  #if GHOSTTY_ADAPTER_LIVE
+  try "quit".write(to: root.appendingPathComponent("control.txt"), atomically: true, encoding: .utf8)
+  let closeDeadline = Date().addingTimeInterval(3)
+  while hoverSource.connectedCount != 0, Date() < closeDeadline { pause(0.05) }
+  guard hoverSource.connectedCount == 0 else { throw NSError(domain: "Adapter close", code: 5) }
+  print("Adapter released the closed pane binding")
+  #endif
 }
 
 do { try runProbe() } catch { fail(error.localizedDescription) }

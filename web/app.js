@@ -102,7 +102,10 @@ $$
     const terminalNames = setupState.hoverApplications.map(function (app) { return app.name; });
     const cmuxStatus = document.getElementById("setup-cmux-status");
     cmuxStatus.hidden = !setupState.hoverApplications.some(function (app) { return app.bundleIdentifier === "com.cmuxterm.app"; });
-    cmuxStatus.textContent = setupState.cmuxStatus || "cmux 需要连接一次：请在本地窗格运行 math-peek connect cmux，无需刷新或重启。";
+    cmuxStatus.textContent = (typeof state.cmuxStatus === "string" ? state.cmuxStatus : "") || "cmux 需要连接一次：请在本地窗格运行 math-peek connect cmux，无需刷新或重启。";
+    const ghosttyStatus = document.getElementById("setup-ghostty-status");
+    ghosttyStatus.hidden = !setupState.hoverApplications.some(function (app) { return app.bundleIdentifier === "com.mitchellh.ghostty"; });
+    ghosttyStatus.textContent = (typeof state.ghosttyStatus === "string" ? state.ghosttyStatus : "Ghostty 实验悬停：在每个本地窗格运行 math-peek connect ghostty，无需刷新。") + " 重启 Math Peek、改字体或屏幕缩放后需重连。仅用于普通输出；重绘和隐藏文字可能误识别。";
     document.getElementById("setup-terminals-status").textContent = setupState.hoverApplicationCount === 0
       ? "尚未启用终端。添加应用，或在菜单栏 Terminal Apps 中勾选已有终端。"
       : "已启用 " + setupState.hoverApplicationCount + " 个终端" + (terminalNames.length ? "：" + terminalNames.join("、") : "") + "。";

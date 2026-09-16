@@ -15,13 +15,14 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MathPeek",
-            dependencies: [.product(name: "SwiftMath", package: "SwiftMath")],
+            dependencies: [.product(name: "SwiftMath", package: "SwiftMath"), "TerminalBridge"],
             path: "native",
             linkerSettings: [
                 .linkedFramework("AppKit"), .linkedFramework("CoreText"),
                 .linkedFramework("WebKit"), .linkedFramework("Carbon"),
                 .linkedFramework("ServiceManagement"), .linkedFramework("Security")
             ]),
-        .executableTarget(name: "MathPeekCLI", path: "cli")
+        .executableTarget(name: "MathPeekCLI", dependencies: ["TerminalBridge"], path: "cli"),
+        .target(name: "TerminalBridge", path: "shared")
     ]
 )

@@ -4,13 +4,14 @@ import Foundation
 private let inputLimit = 2 * 1024 * 1024
 private let usage = """
 Usage: math-peek [--clipboard | --capture | --follow | FILE | -]
-       math-peek connect cmux
+       math-peek connect cmux|ghostty
 
 Preview UTF-8 text, Markdown, or LaTeX in Math Peek.
   --clipboard  Preview the Mac clipboard (default with terminal stdin).
   --capture    Preview the selected terminal's selection or visible text.
   --follow     Follow the selected terminal's visible text.
   --connect-cmux  Connect cmux for hover; run inside a local cmux pane.
+  --connect-ghostty  Experimental hover; run in each local Ghostty pane.
   FILE         Open a local text file (up to 2 MB).
   -            Read UTF-8 text from stdin (also the default for a pipe).
   --           Treat remaining arguments as filenames.
@@ -91,14 +92,15 @@ private func run() throws -> Int32 {
     var action: String?
     var literalArguments = false
     let arguments = Array(CommandLine.arguments.dropFirst())
-    let normalizedArguments = arguments == ["connect", "cmux"] ? ["--connect-cmux"] : arguments
+    let normalizedArguments = arguments == ["connect", "cmux"] ? ["--connect-cmux"]
+        : arguments == ["connect", "ghostty"] ? ["--connect-ghostty"] : arguments
     for argument in normalizedArguments {
         if !literalArguments && argument == "--" { literalArguments = true; continue }
         if !literalArguments && ["--help", "-h"].contains(argument) { print(usage); return 0 }
         if !literalArguments && argument == "--serve" {
             throw CLIError("--serve was removed; native hover, --capture, and --follow need no Python or iTerm RPC")
         }
-        if !literalArguments && ["--clipboard", "--capture", "--follow", "--connect-cmux"].contains(argument) {
+        if !literalArguments && ["--clipboard", "--capture", "--follow", "--connect-cmux", "--connect-ghostty"].contains(argument) {
             guard action == nil, file == nil else { throw CLIError("choose only one action or file") }
             action = argument
         } else {
@@ -113,6 +115,7 @@ private func run() throws -> Int32 {
     let cmuxRequest = action == "--connect-cmux"
         ? try CmuxConnectionRequest.fromEnvironment(ProcessInfo.processInfo.environment) : nil
     let app = try installedApplication()
+    if action == "--connect-ghostty" { return try GhosttyConnectCommand.run(application: app) }
     var request: URL?
     let target: String
     if let cmuxRequest {

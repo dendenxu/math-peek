@@ -62,7 +62,8 @@ Math Peek ${version}：独立的 macOS 菜单栏公式预览应用。
 - 添加终端后立即启用，无需刷新或重启；设置页展示终端列表与使用说明。
 - iTerm2 / Terminal 支持原生悬停；cmux 0.64.24 可在本地窗格运行 math-peek connect cmux 后通过原生网格悬停。
 - cmux 连接存入钥匙串，不改变 socket 设置，不模拟输入或使用 OCR；边距不确定时仅允许同一公式及紧邻空白行的命中范围。
-- Ghostty 1.3.1 仍缺少必要的字符定位接口；自动发现不代表接口兼容。
+- Ghostty 1.3.1 提供不修改终端的实验悬停：在每个本地窗格运行 math-peek connect ghostty，确认连接后无需刷新。
+- Ghostty 实验模式适合普通追加式输出；原文缓存约 500 ms，重绘、全屏 TUI 和隐藏文字仍可能漏识别或误识别。改字体/行距、屏幕缩放或重启 Math Peek 后请重连。
 - 句子中的完整裸 \\boxed{...} 无需美元符号即可悬停；避免把 shell 变量路径误识别为公式。
 - 更新后若辅助功能开关已开启但应用仍提示未授权，请移除旧条目，重新添加当前安装的 Math Peek.app 并开启。
 - 中文主 README、英文说明和实际悬停演示 GIF。
@@ -85,7 +86,8 @@ $signing_note_zh
 Standalone native macOS formula preview, with universal binaries for Apple Silicon and Intel.
 No Python or OCR. iTerm2 and Terminal use native Accessibility text and positions.
 cmux 0.64.24 uses its native viewport grid after running math-peek connect cmux in a local pane.
-Ghostty 1.3.1 still lacks the character position interfaces required for hover.
+Ghostty 1.3.1 supports experimental hover after math-peek connect ghostty in each local pane, without modifying Ghostty.
+This mode is for ordinary append-only output; its roughly 500 ms text cache, cursor redraws, full-screen TUIs, and concealed text remain limitations.
 
 $signing_note
 NOTES

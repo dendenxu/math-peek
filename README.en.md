@@ -83,7 +83,7 @@ interface or application version has been verified compatible.
 ## Compatibility And Permissions
 
 - **iTerm2 / Terminal.app:** native Accessibility text and character positions.
-- **Ghostty:** accessible source text, but the current version lacks character position APIs required for hover.
+- **Ghostty:** experimental hover using accessible text and calibrated terminal dimensions; run `math-peek connect ghostty` in each local pane. Intended for ordinary output; see limitations below.
 - **cmux:** native viewport grid over its local socket; run `math-peek connect cmux` once in a local cmux pane and allow Accessibility. Verified with cmux 0.64.24.
 - **WezTerm, Alacritty, kitty, Warp, Hyper:** automatically discovered; hover depends on their Accessibility text and position APIs.
 - **Custom apps:** add the `.app`; it must expose accessible text and character positions.
@@ -119,6 +119,37 @@ formulas, paths, and ordinary text block this extension. Large padding and
 ambiguous positions may not trigger a preview. If connection fails, update cmux,
 open a new local pane, and reconnect. If an app update prevents saving the
 Keychain entry, remove `local.mathpeek.preview.cmux` in Keychain Access and reconnect.
+
+### Connect Ghostty (Experimental)
+
+Run in **each local Ghostty pane**, outside tmux, screen, and SSH:
+
+```sh
+math-peek connect ghostty
+```
+
+Wait for `Connected this Ghostty pane`, then hover over a formula. No refresh or
+restart is needed. The command briefly queries the terminal's real cell size and
+prints a pairing marker; avoid typing during connection. It does not modify
+Ghostty or its configuration and needs no extra background service, Python, OCR,
+or Screen Recording permission. Use **Terminal Apps → Connect Ghostty (Experimental)...**
+for help, or **Disconnect Ghostty** to disconnect all panes.
+
+Pairing lasts for the current Math Peek process. Reconnect new panes, after
+restarting Math Peek, or after changing font, line spacing, or display scaling.
+Resizes are revalidated; ambiguous dimensions produce a reconnect instruction.
+Closing a pane releases its connection. The app reads only dimensions from the
+paired TTY, never its input or another process's environment.
+
+Verified with Ghostty 1.3.1 on ordinary output, scrollback, soft wraps, bare
+`\boxed{K = \frac{P}{P+R}}`, and shell-path rejection. Common CJK widths are
+supported; uncertain Unicode widths, indented wraps, large histories, and
+ambiguous padding may be skipped. **This mode is intended for append-only output.**
+Ghostty caches accessible text for about 500 ms, so new output can appear late.
+Full-screen TUIs, cursor-edited output, and concealed text can produce missed or
+incorrect previews; external reads cannot fully distinguish these states.
+See the [measured counterexamples](docs/ghostty-research.md). This is not a precise
+render-grid interface for arbitrary terminal screens.
 
 ## Reader And CLI
 

@@ -27,8 +27,10 @@ final class HoverController: NSObject {
     private(set) var allowedBundleIdentifiers: Set<String>
     private(set) var captureIssue: String?
     let cmuxSource = CmuxHoverSource()
+    let ghosttySource = GhosttyHoverSource()
     private var cmuxInputMonitor: Any?
     private var cmuxResumeAfter = Date.distantPast
+    private var ghosttyResumeAfter = Date.distantPast
     private let diagnosticWriter = DiagnosticWriter(url: FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Caches/Math Peek/hover-status.json"))
     let resources: URL
@@ -89,11 +91,19 @@ final class HoverController: NSObject {
         backdrop.addSubview(formulaView)
         panel.contentView = backdrop
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in self?.tick() }
-        cmuxInputMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.scrollWheel, .keyDown, .leftMouseDown]) { [weak self] _ in
-            guard let self, NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.cmuxterm.app" else { return }
+        cmuxInputMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.scrollWheel, .keyDown, .leftMouseDown]) { [weak self] event in
+            guard let self, let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+                  identifier == "com.cmuxterm.app" || identifier == "com.mitchellh.ghostty" else { return }
             self.generation += 1
             self.hide()
-            self.cmuxResumeAfter = Date().addingTimeInterval(0.08)
+            if identifier == "com.cmuxterm.app" { self.cmuxResumeAfter = Date().addingTimeInterval(0.08) }
+            else {
+                self.ghosttyResumeAfter = Date().addingTimeInterval(event.type == .keyDown ? 0.55 : 0.08)
+                if event.type == .keyDown, event.modifierFlags.contains(.command), [24, 27, 29].contains(event.keyCode),
+                   let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier {
+                    self.ghosttySource.invalidateMetrics(pid: pid)
+                }
+            }
         }
     }
 
@@ -133,11 +143,23 @@ final class HoverController: NSObject {
             captureIssue = "cmux connection unavailable; reconnect from a local pane"
         case "cmux-no-geometry", "cmux-grid-unavailable":
             captureIssue = "cmux does not provide a usable viewport grid"
+        case "ghostty-connection-required":
+            captureIssue = "Ghostty: run math-peek connect ghostty in this pane"
+        case "ghostty-reconnect-required":
+            captureIssue = "Ghostty geometry changed; run math-peek connect ghostty again"
+        case "ghostty-layout-unsupported":
+            captureIssue = "Ghostty experimental hover: this layout cannot be reconstructed"
         default:
             captureIssue = nil
         }
         if captureIssue != previousIssue {
-            if stage == "cmux-connection-required" {
+            if stage == "ghostty-connection-required" {
+                report?("Ghostty 实验悬停：请在当前本地窗格运行 math-peek connect ghostty，连接后无需刷新。")
+            } else if stage == "ghostty-reconnect-required" {
+                report?("Ghostty 的字体、屏幕缩放或网格发生变化；请在当前窗格重新运行 math-peek connect ghostty。")
+            } else if stage == "ghostty-layout-unsupported" {
+                report?("Ghostty 实验模式无法确定当前换行或字符宽度，已跳过本次预览。")
+            } else if stage == "cmux-connection-required" {
                 report?("请在 cmux 的本地终端中运行 math-peek connect cmux；连接后无需刷新或重启。")
             } else if stage == "cmux-connection-unavailable" {
                 report?("cmux 连接暂不可用。确认 cmux 正在运行；若持续失败，请在本地窗格重新运行 math-peek connect cmux。")
@@ -217,6 +239,7 @@ final class HoverController: NSObject {
             lastRead = .distantPast
         }
         if front.bundleIdentifier == "com.cmuxterm.app", Date() < cmuxResumeAfter { return }
+        if front.bundleIdentifier == "com.mitchellh.ghostty", Date() < ghosttyResumeAfter { return }
         let point = NSEvent.mouseLocation
         if hypot(point.x - lastPoint.x, point.y - lastPoint.y) > 2 {
             lastPoint = point
@@ -293,6 +316,11 @@ final class HoverController: NSObject {
         AXUIElementSetMessagingTimeout(element, 0.6)
         if NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.cmuxterm.app" {
             let result = cmuxSource.read(at: point, element: element, pid: pid)
+            diagnose(result.stage)
+            return result.formula
+        }
+        if NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.mitchellh.ghostty" {
+            let result = ghosttySource.read(at: point, element: element, pid: pid)
             diagnose(result.stage)
             return result.formula
         }
