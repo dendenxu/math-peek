@@ -32,6 +32,8 @@ Math Peek 可以通过有界查找定位字符。仅提供字体名称和字号�
   参见 [Ghostty v1.3.1 辅助功能实现](https://github.com/ghostty-org/ghostty/blob/v1.3.1/macos/Sources/Ghostty/Surface%20View/SurfaceView_AppKit.swift#L2219)。
   上游 [#10992](https://github.com/ghostty-org/ghostty/pull/10992) 正在补充鼠标与字符范围映射；
   当前发布版不能仅靠读取字体或推算行高实现可靠悬停。
+  [进一步的原生接口实测](ghostty-research.md) 验证了滚动文档高度和 TTY 单元格信息的用途，
+  也复现了 500 ms 原文缓存，以及重绘后不同位置返回相同原文的情况；研究原型尚未成为正式支持。
 - cmux 0.64.24 的 `AXValue` 仅返回当前选区文字，未选中时返回空字符串；
   可以通过 `AXSelectedText` 读取选区，但这不是完整的可见终端原文。
   该版本没有提供悬停所需的 `AXRangeForPosition` / `AXBoundsForRange` 映射，
