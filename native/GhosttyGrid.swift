@@ -61,7 +61,7 @@ struct GhosttyGrid {
                     rows.append(row)
                     row = []
                 }
-                row.append(contentsOf: repeatElement(offset, count: width))
+                row.append(contentsOf: repeatElement(Optional(offset), count: width))
                 offset += character.count
             }
             rows.append(row)
