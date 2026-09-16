@@ -20,7 +20,7 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("AppKit"), .linkedFramework("CoreText"),
                 .linkedFramework("WebKit"), .linkedFramework("Carbon"),
-                .linkedFramework("ServiceManagement")
+                .linkedFramework("ServiceManagement"), .linkedFramework("Security")
             ]),
         .executableTarget(name: "MathPeekCLI", path: "cli")
     ]

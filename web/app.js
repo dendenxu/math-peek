@@ -100,6 +100,9 @@ $$
     document.getElementById("setup-permission-button").hidden = setupState.trusted;
     document.getElementById("setup-permission-status").textContent = setupState.trusted ? "已允许。终端文字仅在本机处理。" : "在系统设置的「辅助功能」中允许 Math Peek。若开关已开但这里仍提示未授权，请移除旧条目，再添加当前安装的 Math Peek.app 并开启。";
     const terminalNames = setupState.hoverApplications.map(function (app) { return app.name; });
+    const cmuxStatus = document.getElementById("setup-cmux-status");
+    cmuxStatus.hidden = !setupState.hoverApplications.some(function (app) { return app.bundleIdentifier === "com.cmuxterm.app"; });
+    cmuxStatus.textContent = setupState.cmuxStatus || "cmux 需要连接一次：请在本地窗格运行 math-peek connect cmux，无需刷新或重启。";
     document.getElementById("setup-terminals-status").textContent = setupState.hoverApplicationCount === 0
       ? "尚未启用终端。添加应用，或在菜单栏 Terminal Apps 中勾选已有终端。"
       : "已启用 " + setupState.hoverApplicationCount + " 个终端" + (terminalNames.length ? "：" + terminalNames.join("、") : "") + "。";

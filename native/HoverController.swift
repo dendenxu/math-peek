@@ -26,6 +26,9 @@ final class HoverController: NSObject {
     var lastTrust: Bool?
     private(set) var allowedBundleIdentifiers: Set<String>
     private(set) var captureIssue: String?
+    let cmuxSource = CmuxHoverSource()
+    private var cmuxInputMonitor: Any?
+    private var cmuxResumeAfter = Date.distantPast
     private let diagnosticWriter = DiagnosticWriter(url: FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Caches/Math Peek/hover-status.json"))
     let resources: URL
@@ -86,6 +89,16 @@ final class HoverController: NSObject {
         backdrop.addSubview(formulaView)
         panel.contentView = backdrop
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in self?.tick() }
+        cmuxInputMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.scrollWheel, .keyDown, .leftMouseDown]) { [weak self] _ in
+            guard let self, NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.cmuxterm.app" else { return }
+            self.generation += 1
+            self.hide()
+            self.cmuxResumeAfter = Date().addingTimeInterval(0.08)
+        }
+    }
+
+    deinit {
+        if let cmuxInputMonitor { NSEvent.removeMonitor(cmuxInputMonitor) }
     }
 
     func requestPermission() {
@@ -114,11 +127,23 @@ final class HoverController: NSObject {
             captureIssue = "No accessible terminal text under pointer"
         case "empty-ax-text":
             captureIssue = "Terminal does not expose visible text"
+        case "cmux-connection-required":
+            captureIssue = "cmux: run math-peek connect cmux in a local pane"
+        case "cmux-connection-unavailable":
+            captureIssue = "cmux connection unavailable; reconnect from a local pane"
+        case "cmux-no-geometry", "cmux-grid-unavailable":
+            captureIssue = "cmux does not provide a usable viewport grid"
         default:
             captureIssue = nil
         }
         if captureIssue != previousIssue {
-            if stage == "no-range-for-position" {
+            if stage == "cmux-connection-required" {
+                report?("请在 cmux 的本地终端中运行 math-peek connect cmux；连接后无需刷新或重启。")
+            } else if stage == "cmux-connection-unavailable" {
+                report?("cmux 连接暂不可用。确认 cmux 正在运行；若持续失败，请在本地窗格重新运行 math-peek connect cmux。")
+            } else if stage == "cmux-no-geometry" || stage == "cmux-grid-unavailable" {
+                report?("cmux 没有返回可用的字符网格或位置；请检查版本，并在普通终端窗格内尝试。")
+            } else if stage == "no-range-for-position" {
                 report?("此终端没有提供鼠标到文字的位置映射，无法自动悬停预览。")
             } else if stage == "no-text-area" {
                 report?("鼠标所在位置没有可读取的终端文字；应用需要提供系统辅助功能文本接口。")
@@ -191,6 +216,7 @@ final class HoverController: NSObject {
             generation += 1
             lastRead = .distantPast
         }
+        if front.bundleIdentifier == "com.cmuxterm.app", Date() < cmuxResumeAfter { return }
         let point = NSEvent.mouseLocation
         if hypot(point.x - lastPoint.x, point.y - lastPoint.y) > 2 {
             lastPoint = point
@@ -265,6 +291,11 @@ final class HoverController: NSObject {
         }
         guard foundTextArea else { diagnose("no-text-area"); return nil }
         AXUIElementSetMessagingTimeout(element, 0.6)
+        if NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.cmuxterm.app" {
+            let result = cmuxSource.read(at: point, element: element, pid: pid)
+            diagnose(result.stage)
+            return result.formula
+        }
         // Reading AXValue refreshes iTerm2's index map; AX offsets are UTF-16.
         var raw: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &raw) == .success,

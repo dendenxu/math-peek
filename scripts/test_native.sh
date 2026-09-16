@@ -52,6 +52,17 @@ xcrun swiftc native/TerminalCapture.swift tests/terminal_capture/main.swift -o "
 "$bin_dir/terminal-capture-tests"
 xcrun swiftc native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
 "$bin_dir/hover-position-tests"
+xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift tests/cmux_grid/main.swift -o "$bin_dir/cmux-grid-tests"
+"$bin_dir/cmux-grid-tests"
+xcrun swiftc cli/CmuxConnection.swift tests/cli_cmux/main.swift -o "$bin_dir/cli-cmux-tests"
+"$bin_dir/cli-cmux-tests"
+xcrun swiftc native/CmuxSocket.swift tests/cmux_socket/main.swift -o "$bin_dir/cmux-socket-tests"
+"$bin_dir/cmux-socket-tests"
+xcrun swiftc native/CmuxSocket.swift native/CmuxConnectionStore.swift tests/cmux_connection_store/main.swift -o "$bin_dir/cmux-connection-store-tests"
+"$bin_dir/cmux-connection-store-tests"
+xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift \
+    tests/cmux_geometry/main.swift -o "$bin_dir/cmux-geometry-tests"
+"$bin_dir/cmux-geometry-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
 # Swift 6.3's default build engine emits one combined dependency object.
 if [[ ! -f "${math_objects[0]}" && -f "$bin_dir/SwiftMath.o" ]]; then
@@ -77,12 +88,12 @@ xcrun swiftc -O -I "$module_dir" \
     "${math_objects[@]}" -o "$bin_dir/native-rendering-tests"
 xcrun swiftc -O -I "$module_dir" \
     native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
-    native/HoverTextPosition.swift native/HoverController.swift \
+    native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
     tests/hover_transitions/main.swift "${math_objects[@]}" \
     -o "$bin_dir/hover-transition-tests"
 xcrun swiftc -O -I "$module_dir" \
     native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
-    native/HoverTextPosition.swift native/HoverController.swift \
+    native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
     tests/panel_layout/main.swift "${math_objects[@]}" \
     -o "$bin_dir/panel-layout-tests"
 

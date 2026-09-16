@@ -84,7 +84,7 @@ interface or application version has been verified compatible.
 
 - **iTerm2 / Terminal.app:** native Accessibility text and character positions.
 - **Ghostty:** accessible source text, but the current version lacks character position APIs required for hover.
-- **cmux:** automatically discovered; the current version's incomplete text and position APIs limit hover support.
+- **cmux:** native viewport grid over its local socket; run `math-peek connect cmux` once in a local cmux pane and allow Accessibility. Verified with cmux 0.64.24.
 - **WezTerm, Alacritty, kitty, Warp, Hyper:** automatically discovered; hover depends on their Accessibility text and position APIs.
 - **Custom apps:** add the `.app`; it must expose accessible text and character positions.
 
@@ -93,6 +93,32 @@ or require Screen Recording permission. Discovery is not a blanket compatibility
 guarantee for every app, version, or feature. Missing position APIs produce a clear
 status; clipboard and file preview remain available.
 See [native terminal API requirements](docs/terminal-compatibility.md) for custom apps and verified limitations.
+
+### Connect cmux
+
+Run this inside a **local cmux terminal pane**, outside SSH:
+
+```sh
+math-peek connect cmux
+```
+
+Math Peek verifies the connection and reports the result. No terminal refresh or
+restart is needed. Both delimited formulas and bare `\boxed{K = \frac{P}{P+R}}`
+are supported. Open **Terminal Apps → Connect cmux...** for status, or choose
+**Disconnect cmux** to remove the saved connection.
+
+The command uses the capability that cmux gives its shell and stores it in
+Math Peek's Keychain entry. It does not change socket access settings. The app
+uses a fixed set of read requests; it never sends terminal input, changes the
+selection, or resizes the terminal. Diagnostics do not contain terminal text.
+
+cmux does not yet expose the exact text padding. Math Peek uses its actual grid
+and cell dimensions and requires all possible nonblank rows to identify the same
+formula. The hover target may extend into an adjacent entirely blank row; other
+formulas, paths, and ordinary text block this extension. Large padding and
+ambiguous positions may not trigger a preview. If connection fails, update cmux,
+open a new local pane, and reconnect. If an app update prevents saving the
+Keychain entry, remove `local.mathpeek.preview.cmux` in Keychain Access and reconnect.
 
 ## Reader And CLI
 

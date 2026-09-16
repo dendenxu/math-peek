@@ -46,6 +46,11 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     var setupError = ""
     var lastSetupState = ""
     var hoverStatus = "悬停状态检查中"
+    var cmuxStatus = "cmux 尚未连接：在本地窗格运行 math-peek connect cmux。"
+    var cmuxConnected = false
+    private var cmuxRequestGeneration = 0
+    private var pendingCmuxRequest: String?
+    private let cmuxConnectionQueue = DispatchQueue(label: "local.mathpeek.cmux-connection", qos: .userInitiated)
     let defaults = UserDefaults.standard
     let resources = Bundle.main.resourceURL!
 
@@ -69,6 +74,22 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             self.refreshSetupState()
         }
         launched = true
+        if let request = pendingCmuxRequest {
+            pendingCmuxRequest = nil
+            connectCmux(request)
+        } else {
+            let version = cmuxRequestGeneration
+            cmuxConnectionQueue.async {
+                let connection = CmuxConnectionStore.load()
+                DispatchQueue.main.async {
+                    guard self.cmuxRequestGeneration == version else { return }
+                    self.hover.cmuxSource.setConnection(connection)
+                    self.cmuxConnected = connection != nil
+                    if connection != nil { self.cmuxStatus = "cmux 连接已保存；切回终端即可悬停。" }
+                    self.refreshSetupState(force: true)
+                }
+            }
+        }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationLaunched(_:)),
             name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationActivated(_:)),
@@ -298,6 +319,12 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         let add = NSMenuItem(title: "Add Application...", action: #selector(addHoverApplication), keyEquivalent: "")
         add.target = self
         hoverApplicationsMenu.addItem(add)
+        let connect = NSMenuItem(title: "Connect cmux...", action: #selector(showCmuxConnection), keyEquivalent: "")
+        connect.target = self
+        hoverApplicationsMenu.addItem(connect)
+        let disconnect = NSMenuItem(title: "Disconnect cmux", action: #selector(disconnectCmux), keyEquivalent: "")
+        disconnect.target = self
+        hoverApplicationsMenu.addItem(disconnect)
         hoverApplicationsMenu.addItem(.separator())
         let automatic = NSMenuItem(title: "Automatically Find Terminals", action: #selector(toggleAutomaticTerminalDiscovery), keyEquivalent: "")
         automatic.state = defaults.bool(forKey: "autoDiscoverTerminals") ? .on : .off
@@ -365,6 +392,9 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         }
         alert.messageText = "已启用 \(added.joined(separator: "、"))"
         alert.informativeText = "无需刷新或重启。切回终端，把鼠标停在 $...$、$$...$$ 或 \\[...\\] 中的公式上，即可尝试预览，无需选中文字。\n\n终端需要提供原生文字及字符位置接口。若没有弹出预览，可在菜单顶部查看原因；接口不完整的终端可先选中文字并复制，再使用粘贴预览。"
+        if picker.urls.contains(where: { Bundle(url: $0)?.bundleIdentifier == "com.cmuxterm.app" }) {
+            alert.informativeText += "\n\ncmux 还需连接一次：在 cmux 的本地终端中运行 math-peek connect cmux。"
+        }
         if !hover.enabled {
             alert.informativeText += "\n\n悬停预览目前已暂停，请先在菜单中勾选 Hover Formula Preview。"
         }
@@ -416,7 +446,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             "hoverApplications": hoverApplications.applications.filter(\.enabled).map {
                 ["name": $0.displayName, "bundleIdentifier": $0.bundleIdentifier]
             },
-            "autoDiscoverTerminals": defaults.bool(forKey: "autoDiscoverTerminals")]
+            "autoDiscoverTerminals": defaults.bool(forKey: "autoDiscoverTerminals"),
+            "cmuxConnected": cmuxConnected, "cmuxStatus": cmuxStatus]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
         guard force || serialized != lastSetupState else { return }
@@ -610,9 +641,115 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         }
     }
 
+    @objc private func showCmuxConnection() {
+        showSetup()
+        status(cmuxStatus + "\n连接命令：math-peek connect cmux（请在 cmux 本地窗格执行，不是在 SSH 会话中）。")
+    }
+
+    @objc private func disconnectCmux() {
+        cmuxRequestGeneration += 1
+        let version = cmuxRequestGeneration
+        hover.cmuxSource.setConnection(nil)
+        hover.generation += 1
+        hover.hide()
+        cmuxConnected = false
+        cmuxStatus = "cmux 已断开；重新连接请在本地窗格运行 math-peek connect cmux。"
+        cmuxConnectionQueue.async {
+            do { try CmuxConnectionStore.remove() }
+            catch {
+                DispatchQueue.main.async {
+                    guard self.cmuxRequestGeneration == version else { return }
+                    self.cmuxStatus = "本次运行已断开 cmux，但钥匙串中的旧连接未能删除。"
+                    self.refreshSetupState(force: true)
+                }
+            }
+        }
+        refreshSetupState(force: true)
+    }
+
+    private func connectCmux(_ request: String) {
+        cmuxRequestGeneration += 1
+        let version = cmuxRequestGeneration
+        cmuxStatus = "正在验证 cmux 连接…"
+        refreshSetupState(force: true)
+        let processID = NSRunningApplication.runningApplications(withBundleIdentifier: "com.cmuxterm.app").first?.processIdentifier
+        cmuxConnectionQueue.async {
+            var verified: CmuxSocket.Connection?
+            var message = "cmux 连接失败。请确认 cmux 正在运行并更新至支持字符网格的版本，再在新的本地窗格中运行 math-peek connect cmux。"
+            do {
+                let connection = try CmuxConnectionStore.consume(request)
+                guard let processID else { throw CmuxConnectionStore.Failure.invalidRequest }
+                let socket = CmuxSocket(connection: connection, expectedPID: processID)
+                let capabilities = try socket.call(.systemCapabilities)
+                guard let methods = capabilities["methods"] as? [String],
+                      Set(["debug.terminals", "pane.list", "mobile.terminal.replay"]).isSubset(of: Set(methods)),
+                      let terminals = try socket.call(.debugTerminals)["terminals"] as? [[String: Any]],
+                      terminals.count <= 256 else {
+                    throw CmuxConnectionStore.Failure.invalidRequest
+                }
+                let candidates = terminals.filter { item in
+                    ["workspace_selected", "surface_selected_in_pane", "runtime_surface_ready",
+                     "window_visible", "hosted_view_visible_in_ui"].allSatisfy { item[$0] as? Bool == true }
+                }.sorted { ($0["window_key"] as? Bool == true ? 1 : 0) > ($1["window_key"] as? Bool == true ? 1 : 0) }
+                let deadline = ProcessInfo.processInfo.systemUptime + 0.8
+                var validGrid = false
+                for terminal in candidates.prefix(8) {
+                    guard ProcessInfo.processInfo.systemUptime < deadline else { break }
+                    guard let rawWindow = terminal["window_id"] as? String, let window = UUID(uuidString: rawWindow)?.uuidString,
+                          let rawWorkspace = terminal["workspace_id"] as? String, let workspace = UUID(uuidString: rawWorkspace)?.uuidString,
+                          let rawPane = terminal["pane_id"] as? String, let pane = UUID(uuidString: rawPane)?.uuidString,
+                          let rawSurface = terminal["surface_id"] as? String, let surface = UUID(uuidString: rawSurface)?.uuidString else { continue }
+                    let target = CmuxHoverSource.Surface(windowID: window, workspaceID: workspace, paneID: pane,
+                        surfaceID: surface, windowFrame: .zero, hostedFrame: .zero)
+                    guard let panes = try? socket.call(.paneList, params: ["workspace_id": workspace, "window_id": window]),
+                          let metrics = CmuxHoverSource.metrics(in: panes, surface: target),
+                          let replay = try? socket.call(.mobileTerminalReplay,
+                              params: ["workspace_id": workspace, "surface_id": surface, "anchor": "viewport"]),
+                          CmuxGrid.decode(result: replay, expectedSurfaceID: surface,
+                              expectedColumns: metrics.columns, expectedRows: metrics.rows) != nil else { continue }
+                    validGrid = true
+                    break
+                }
+                guard validGrid else { throw CmuxConnectionStore.Failure.invalidRequest }
+                try CmuxConnectionStore.save(connection)
+                verified = connection
+                message = "cmux 连接成功。切回终端，把鼠标停在公式内部即可预览，无需刷新或重启。"
+            } catch CmuxConnectionStore.Failure.keychain {
+                message = "cmux 接口验证通过，但连接未能存入钥匙串。请在钥匙串访问中检查 Math Peek 的连接条目后重试。"
+            } catch {}
+            DispatchQueue.main.async {
+                guard self.cmuxRequestGeneration == version else { return }
+                self.cmuxStatus = message
+                if let verified {
+                    self.hover.cmuxSource.setConnection(verified)
+                    self.cmuxConnected = true
+                    self.hoverApplications.add(bundleIdentifier: "com.cmuxterm.app", displayName: "cmux")
+                    self.updateHoverApplications()
+                    self.hover.generation += 1
+                    self.hover.lastRead = .distantPast
+                }
+                self.refreshSetupState(force: true)
+                self.status(message)
+            }
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             if url.scheme == "mathpeek" {
+                if url.host == "connect-cmux" {
+                    if let request = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                        .first(where: { $0.name == "request" })?.value {
+                        if launched { connectCmux(request) }
+                        else {
+                            if let previous = pendingCmuxRequest, previous != request {
+                                cmuxConnectionQueue.async { _ = try? CmuxConnectionStore.consume(previous) }
+                            }
+                            pendingCmuxRequest = request
+                        }
+                    }
+                    continue
+                }
                 if !launched, url.host == "capture" || url.host == "follow" {
                     // Launch Services may deliver the URL before discovery and hover setup.
                     pendingTerminalAction = url.host == "capture" ? .capture : .follow

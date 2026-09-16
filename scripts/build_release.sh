@@ -60,7 +60,9 @@ Math Peek ${version}：独立的 macOS 菜单栏公式预览应用。
 - 解压 ZIP，把 Math Peek.app 拖到“应用程序”，打开后允许辅助功能权限。
 - 安装器、CLI、终端取字和悬停渲染均为原生实现，不需要 Python，不使用 OCR。
 - 添加终端后立即启用，无需刷新或重启；设置页展示终端列表与使用说明。
-- iTerm2 / Terminal 支持原生悬停；Ghostty 1.3.1 / cmux 0.64.24 缺少所需位置接口，暂不支持悬停。自动发现不代表接口兼容。
+- iTerm2 / Terminal 支持原生悬停；cmux 0.64.24 可在本地窗格运行 math-peek connect cmux 后通过原生网格悬停。
+- cmux 连接存入钥匙串，不改变 socket 设置，不模拟输入或使用 OCR；边距不确定时仅允许同一公式及紧邻空白行的命中范围。
+- Ghostty 1.3.1 仍缺少必要的字符定位接口；自动发现不代表接口兼容。
 - 句子中的完整裸 \\boxed{...} 无需美元符号即可悬停；避免把 shell 变量路径误识别为公式。
 - 更新后若辅助功能开关已开启但应用仍提示未授权，请移除旧条目，重新添加当前安装的 Math Peek.app 并开启。
 - 中文主 README、英文说明和实际悬停演示 GIF。
@@ -81,8 +83,9 @@ $signing_note_zh
 ---
 
 Standalone native macOS formula preview, with universal binaries for Apple Silicon and Intel.
-No Python or OCR. Native hover requires terminal Accessibility text and character positions;
-current Ghostty and cmux releases do not expose enough position data for hover.
+No Python or OCR. iTerm2 and Terminal use native Accessibility text and positions.
+cmux 0.64.24 uses its native viewport grid after running math-peek connect cmux in a local pane.
+Ghostty 1.3.1 still lacks the character position interfaces required for hover.
 
 $signing_note
 NOTES

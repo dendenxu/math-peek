@@ -83,6 +83,7 @@ echo "Installed: $app"
 echo "Command: $command_path"
 echo "Open Math Peek to set up Accessibility, hover preview, and launch at login."
 echo "Installed terminals are discovered automatically; add custom apps in Terminal Apps."
+echo "For cmux, run math-peek connect cmux once inside a local cmux terminal pane."
 if [[ -z "${DEVELOPER_ID_APPLICATION:-}" || "$DEVELOPER_ID_APPLICATION" == "-" ]]; then
     echo "This ad-hoc signed build may need Accessibility permission again after an update."
     echo "First try turning Math Peek's Accessibility switch back on in System Settings."
