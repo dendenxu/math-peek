@@ -71,6 +71,9 @@ brew install --cask dendenxu/tap/math-peek
 open -a "Math Peek"
 \`\`\`
 
+若新版 Homebrew 提示 untrusted tap，先运行
+\`brew trust --cask dendenxu/tap/math-peek\`，然后重试安装。
+
 $signing_note_zh
 随附 SHA256 校验文件。应用内包含命令行工具 Math Peek.app/Contents/MacOS/MathPeekCLI。
 

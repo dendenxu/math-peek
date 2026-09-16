@@ -22,7 +22,9 @@ open -a "Math Peek"
 ```
 
 Installs the precompiled app and `math-peek` CLI. No Swift compiler or Python is
-needed. Quit Math Peek before updating with `brew upgrade --cask dendenxu/tap/math-peek`.
+needed. If a recent Homebrew version reports an untrusted tap, run
+`brew trust --cask dendenxu/tap/math-peek`, then retry installation.
+Quit Math Peek before updating with `brew upgrade --cask dendenxu/tap/math-peek`.
 
 ### Download
 

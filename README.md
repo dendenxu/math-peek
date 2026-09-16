@@ -21,6 +21,12 @@ open -a "Math Peek"
 ```
 
 安装预编译应用及 `math-peek` 命令，不需要 Swift 编译器或 Python。
+较新的 Homebrew 如果提示 `untrusted tap`，先信任这个 cask，再重试安装：
+
+```sh
+brew trust --cask dendenxu/tap/math-peek
+```
+
 更新时先从菜单栏退出 Math Peek，再运行：
 
 ```sh

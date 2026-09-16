@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-package:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test native rendering, layout, and terminal capture
+        run: ./scripts/test_native.sh
+      - name: Test Markdown reader
+        run: node --test web/core.test.cjs
+      - name: Check installation scripts
+        run: |
+          bash -n install.sh scripts/build_app.sh scripts/build_release.sh scripts/test_native.sh
+          sh -n bin/math-peek
+          plutil -lint assets/Info.plist
+      - name: Build universal package
+        run: ./scripts/build_release.sh
+      - name: Verify package and native CLI
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          archive="Math.Peek-$version-universal.zip"
+          (cd build/release && shasum -a 256 -c "$archive.sha256")
+          ditto -x -k "build/release/$archive" "$RUNNER_TEMP/math-peek-package"
+          app="$RUNNER_TEMP/math-peek-package/Math Peek.app"
+          codesign --verify --deep --strict "$app"
+          for architecture in arm64 x86_64; do
+            lipo "$app/Contents/MacOS/MathPeek" -verify_arch "$architecture"
+            lipo "$app/Contents/MacOS/MathPeekCLI" -verify_arch "$architecture"
+          done
+          "$app/Contents/MacOS/MathPeekCLI" --help
+          if "$app/Contents/MacOS/MathPeekCLI" --serve > "$RUNNER_TEMP/math-peek-serve.log" 2>&1; then
+            echo "The removed --serve option unexpectedly succeeded."
+            exit 1
+          fi
+          grep -F -- '--serve was removed' "$RUNNER_TEMP/math-peek-serve.log"
+          unzip -Z1 "build/release/$archive" > "$RUNNER_TEMP/math-peek-archive-files.txt"
+          if grep -E '(^|/)(integration|runtime|__pycache__)(/|$)|\.pyc?$|\.test\.(js|cjs)$' "$RUNNER_TEMP/math-peek-archive-files.txt"; then
+            echo "The app archive contains development files or a Python runtime."
+            exit 1
+          fi

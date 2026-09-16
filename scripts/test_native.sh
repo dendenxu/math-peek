@@ -51,14 +51,21 @@ xcrun swiftc native/TerminalCapture.swift tests/terminal_capture/main.swift -o "
 xcrun swiftc native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
 "$bin_dir/hover-position-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
-module_dir="$bin_dir/Modules"
 # Swift 6.3's default build engine emits one combined dependency object.
 if [[ ! -f "${math_objects[0]}" && -f "$bin_dir/SwiftMath.o" ]]; then
     math_objects=("$bin_dir/SwiftMath.o")
-    module_dir="$bin_dir"
 fi
 if [[ ! -f "${math_objects[0]}" ]]; then
     echo "SwiftMath object files not found in $bin_dir" >&2
+    exit 1
+fi
+# Older SwiftPM puts modules beside products even with per-source objects.
+if [[ -e "$bin_dir/Modules/SwiftMath.swiftmodule" ]]; then
+    module_dir="$bin_dir/Modules"
+elif [[ -e "$bin_dir/SwiftMath.swiftmodule" ]]; then
+    module_dir="$bin_dir"
+else
+    echo "SwiftMath.swiftmodule not found in $bin_dir or $bin_dir/Modules" >&2
     exit 1
 fi
 
