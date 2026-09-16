@@ -54,8 +54,21 @@ final class HoverController: NSObject {
         backdrop.blendingMode = .behindWindow
         backdrop.state = .active
         backdrop.appearance = NSAppearance(named: .darkAqua)
+        let cornerRadius: CGFloat = 10
+        let maskSize = NSSize(width: cornerRadius * 2 + 1, height: cornerRadius * 2 + 1)
+        let materialMask = NSImage(size: maskSize, flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+            return true
+        }
+        materialMask.capInsets = NSEdgeInsets(top: cornerRadius, left: cornerRadius,
+                                             bottom: cornerRadius, right: cornerRadius)
+        materialMask.resizingMode = .stretch
+        // Behind-window material and its shadow need an explicit mask;
+        // layer clipping below only rounds the border and ordinary subviews.
+        backdrop.maskImage = materialMask
         backdrop.wantsLayer = true
-        backdrop.layer?.cornerRadius = 10
+        backdrop.layer?.cornerRadius = cornerRadius
         backdrop.layer?.masksToBounds = true
         backdrop.layer?.borderWidth = 1
         backdrop.layer?.borderColor = NSColor(srgbRed: 80 / 255, green: 80 / 255, blue: 80 / 255, alpha: 1).cgColor
