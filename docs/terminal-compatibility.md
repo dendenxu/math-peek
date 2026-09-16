@@ -25,9 +25,16 @@ Math Peek 可以通过有界查找定位字符。仅提供字体名称和字号�
 
 ## 已核对的限制
 
+以下结论针对列出的版本；后续版本是否支持，应重新核对其原生接口。
+
 - Ghostty 1.3.1 能提供原文和可见范围，但没有实现 `AXRangeForPosition` 或
   `AXBoundsForRange`。该版本的 AppleScript 字典也没有提供字符网格或位置。
-- cmux 0.64.9 的文本区域不能提供悬停所需的位置映射；其原文接口也有局限。
+  参见 [Ghostty v1.3.1 辅助功能实现](https://github.com/ghostty-org/ghostty/blob/v1.3.1/macos/Sources/Ghostty/Surface%20View/SurfaceView_AppKit.swift#L2219)。
+- cmux 0.64.24 的 `AXValue` 仅返回当前选区文字，未选中时返回空字符串；
+  可以通过 `AXSelectedText` 读取选区，但这不是完整的可见终端原文。
+  该版本没有提供悬停所需的 `AXRangeForPosition` / `AXBoundsForRange` 映射，
+  `characterIndex(for:)` 也只返回当前选区位置，并未按鼠标坐标定位字符。
+  参见 [cmux v0.64.24 辅助功能实现](https://github.com/manaflow-ai/cmux/blob/v0.64.24/Sources/GhosttyTerminalView.swift#L6085)。
 - 自动发现只负责识别和启用应用。其他终端和自研应用能否悬停，取决于实际接口。
 
 缺少上述接口时，重新添加应用或重新授权不会补齐位置数据。

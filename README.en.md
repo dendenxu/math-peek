@@ -28,7 +28,7 @@ Quit Math Peek before updating with `brew upgrade --cask dendenxu/tap/math-peek`
 
 ### Download
 
-Get `Math.Peek-1.1.0-universal.zip` from [Releases](https://github.com/dendenxu/math-peek/releases/latest),
+Get `Math.Peek-1.1.1-universal.zip` from [Releases](https://github.com/dendenxu/math-peek/releases/latest),
 extract it, and move `Math Peek.app` to Applications. The universal app supports
 Apple Silicon and Intel Macs. Requires macOS 13+.
 
@@ -99,7 +99,9 @@ See [native terminal API requirements](docs/terminal-compatibility.md) for custo
 Hover recognizes `$...$`, `$$...$$`, `\(...\)`, `\[...\]`, and clear standalone
 raw TeX with known commands. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
-Code blocks and ambiguous currency are handled conservatively.
+A complete bare `\boxed{...}` also works inside a sentence without dollar delimiters;
+only the formula itself triggers hover. Code blocks, inline code, shell paths such
+as `$HOME/Applications/...`, and ambiguous currency are handled conservatively.
 
 The popup scales to fit without animations. Moving within the same formula does
 not keep repositioning it. Open Reader supports longer Markdown with bundled KaTeX.
@@ -124,9 +126,14 @@ installation, add `~/.local/bin` to PATH. The old Python RPC `--serve` is remove
 
 After adding an app, ensure it is checked, hover is enabled, and the terminal is
 frontmost. No refresh is necessary. Follow the setup status for missing
-Accessibility permission or missing terminal position APIs. A rebuilt local signature may
-invalidate old permissions; remove the old entry in System Settings, then add
-and enable the current app again.
+Accessibility permission or missing terminal position APIs.
+
+The current release uses an ad-hoc signature, so updating or rebuilding may invalidate
+an earlier Accessibility grant. First try turning Math Peek's Accessibility switch
+back on in System Settings. If the switch is on but Math Peek's setup still reports
+missing permission, remove the old entry, use "+" to add the currently installed
+`Math Peek.app`, and enable it. Check the permission status in Math Peek itself;
+removing and re-adding is unnecessary when the switch restores access.
 
 Use the two exact examples first. Incomplete delimiters, code blocks, and
 inaccessible text do not force a popup. Clipboard and file preview remain available.

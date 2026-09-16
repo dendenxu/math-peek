@@ -83,3 +83,10 @@ echo "Installed: $app"
 echo "Command: $command_path"
 echo "Open Math Peek to set up Accessibility, hover preview, and launch at login."
 echo "Installed terminals are discovered automatically; add custom apps in Terminal Apps."
+if [[ -z "${DEVELOPER_ID_APPLICATION:-}" || "$DEVELOPER_ID_APPLICATION" == "-" ]]; then
+    echo "This ad-hoc signed build may need Accessibility permission again after an update."
+    echo "First try turning Math Peek's Accessibility switch back on in System Settings."
+    echo "If the switch is on but Math Peek setup still reports missing permission, remove the old entry,"
+    echo "then use + to add $app and enable it. Check the permission status in Math Peek itself."
+    echo "No removal is needed if the switch restores access."
+fi

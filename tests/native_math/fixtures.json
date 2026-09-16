@@ -6705,5 +6705,345 @@
       178
     ],
     "expected": "$$                              \n\\frac{1}{2} +                   \n\\text{速度估计}                        \n$$"
+  },
+  {
+    "name": "inline-boxed-chinese",
+    "text": "最优增益是\\boxed{K = \\frac{P}{P+R}}，因此可以继续更新。",
+    "segments": [
+      "\\boxed{K = \\frac{P}{P+R}}"
+    ]
+  },
+  {
+    "name": "inline-boxed-english",
+    "text": "The gain is \\boxed{K = \\frac{P}{P+R}}, so we can update.",
+    "segments": [
+      "\\boxed{K = \\frac{P}{P+R}}"
+    ]
+  },
+  {
+    "name": "inline-boxed-unicode-prefix",
+    "text": "😀 é 👩‍💻 中文：\\boxed{K = \\frac{P}{P+R}}，完成。",
+    "segments": [
+      "\\boxed{K = \\frac{P}{P+R}}"
+    ]
+  },
+  {
+    "name": "inline-boxed-whitespace",
+    "text": "The answer is \\boxed {x^2 + 1}, as expected.",
+    "segments": [
+      "\\boxed {x^2 + 1}"
+    ]
+  },
+  {
+    "name": "inline-boxed-nested",
+    "text": "Result: \\boxed{\\boxed{\\frac{x}{y}}}, done.",
+    "segments": [
+      "\\boxed{\\boxed{\\frac{x}{y}}}"
+    ]
+  },
+  {
+    "name": "inline-boxed-escaped-braces",
+    "text": "Result: \\boxed{\\{x\\} + \\frac{a_{1}}{b}}, done.",
+    "segments": [
+      "\\boxed{\\{x\\} + \\frac{a_{1}}{b}}"
+    ]
+  },
+  {
+    "name": "inline-boxed-neighboring-formulas",
+    "text": "First \\boxed{x}, then \\boxed{y}, done.",
+    "segments": [
+      "\\boxed{x}",
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-delimited-priority",
+    "text": "The result is $\\boxed{K = \\frac{P}{P+R}}$, done.",
+    "segments": [
+      "$\\boxed{K = \\frac{P}{P+R}}$"
+    ]
+  },
+  {
+    "name": "inline-boxed-whole-line",
+    "text": "  \\boxed{K = \\frac{P}{P+R}}  ",
+    "segments": [
+      "\\boxed{K = \\frac{P}{P+R}}"
+    ]
+  },
+  {
+    "name": "bare-math-whole-line-preserved",
+    "text": "\\frac{x}{y} + z^2",
+    "segments": [
+      "\\frac{x}{y} + z^2"
+    ]
+  },
+  {
+    "name": "inline-boxed-inline-code",
+    "text": "Try `\\boxed{x}` before \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-fenced-code",
+    "text": "```latex\n\\boxed{x}\n```\nThen \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-tilde-code",
+    "text": "~~~tex\n\\boxed{x}\n~~~\nThen \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-quoted-fence",
+    "text": "> ```latex\n> \\boxed{x}\n> ```\nThen \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-unclosed-fence",
+    "text": "```latex\n\\boxed{x}",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-escaped-command",
+    "text": "Literal \\\\boxed{x}, real \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-four-backslashes",
+    "text": "Literal \\\\\\\\boxed{x}, real \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-command-name-boundary",
+    "text": "Not \\boxedly{x} or \\boxedvalue{x}, but \\boxed{y}.",
+    "segments": [
+      "\\boxed{y}"
+    ]
+  },
+  {
+    "name": "inline-boxed-unbraced-command",
+    "text": "The incomplete command is \\boxed x.",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-incomplete-outer",
+    "text": "The gain is \\boxed{K = \\frac{P}{P+R}, unfinished.",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-incomplete-whole-line",
+    "text": "\\boxed{K = \\frac{P}{P+R}",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-incomplete-preserves-next-math",
+    "text": "Unfinished \\boxed{K = \\frac{P}{P+R}; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-quoted-home-paths",
+    "text": "\"$HOME/Applications/Ghostty.app\" \"$HOME/Applications/cmux.app\"",
+    "segments": []
+  },
+  {
+    "name": "shell-dollar-paths-preserve-next-math",
+    "text": "\"$HOME/Applications/Ghostty.app\" \"$HOME/Applications/cmux.app\" then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-unquoted-paths",
+    "text": "open $HOME/Applications/Ghostty.app $HOME/Applications/cmux.app; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-braced-home-paths",
+    "text": "open \"${HOME}/Applications/Ghostty.app\" \"${HOME}/Applications/cmux.app\"; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-colon-variable-paths",
+    "text": "PATH=\"$HOME/bin:$PATH\"; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-paths-with-spaces",
+    "text": "\"$HOME/Library/Application Support/Ghostty\" \"$HOME/Library/Application Support/cmux\"; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-inline-code",
+    "text": "Run `open \"$HOME/Applications/Ghostty.app\" \"$HOME/Applications/cmux.app\"` then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-and-inline-boxed",
+    "text": "\"$HOME/Applications/Ghostty.app\" \"$HOME/Applications/cmux.app\" Gain: \\boxed{K = \\frac{P}{P+R}}, then $x$.",
+    "segments": [
+      "\\boxed{K = \\frac{P}{P+R}}",
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-explicit-math-preserved",
+    "text": "Math $HOME$ and $x$ are explicitly delimited.",
+    "segments": [
+      "$HOME$",
+      "$x$"
+    ]
+  },
+  {
+    "name": "shell-dollar-escaped-variable",
+    "text": "Literal \\$HOME/files, then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "inline-boxed-incomplete-outer-hides-inner",
+    "text": "Unfinished \\boxed{\\boxed{x}, then $y$.",
+    "segments": [
+      "$y$"
+    ]
+  },
+  {
+    "name": "inline-boxed-valid-before-incomplete",
+    "text": "First \\boxed{x}, then unfinished \\boxed{",
+    "segments": [
+      "\\boxed{x}"
+    ]
+  },
+  {
+    "name": "shell-dollar-ratios-remain-math",
+    "text": "Ratios $x/y$ and $P/R$ remain math.",
+    "segments": [
+      "$x/y$",
+      "$P/R$"
+    ]
+  },
+  {
+    "name": "shell-dollar-ratio-spaced-addition",
+    "text": "Math $P/R + Q$.",
+    "segments": [
+      "$P/R + Q$"
+    ]
+  },
+  {
+    "name": "shell-dollar-ratio-spaced-denominator",
+    "text": "Math $x/ y$.",
+    "segments": [
+      "$x/ y$"
+    ]
+  },
+  {
+    "name": "shell-dollar-uppercase-product-remains-math",
+    "text": "Math $AB = C$.",
+    "segments": [
+      "$AB = C$"
+    ]
+  },
+  {
+    "name": "shell-dollar-brace-group-remains-math",
+    "text": "Math ${x} + y$.",
+    "segments": [
+      "${x} + y$"
+    ]
+  },
+  {
+    "name": "inline-boxed-shell-source",
+    "text": "printf '\\boxed{x}'",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-function-source",
+    "text": "print(r\"\\boxed{x}\")",
+    "segments": []
+  },
+  {
+    "name": "inline-boxed-math-prime",
+    "text": "The result is \\boxed{x' + y}, done.",
+    "segments": [
+      "\\boxed{x' + y}"
+    ]
+  },
+  {
+    "name": "shell-dollar-short-colon-variable-path",
+    "text": "PATH=\"$HOME/a:$PATH\"; then $x$.",
+    "segments": [
+      "$x$"
+    ]
+  },
+  {
+    "name": "explicit-math-ratio-prime",
+    "text": "Math $P/R + Q'$.",
+    "segments": [
+      "$P/R + Q'$"
+    ]
+  },
+  {
+    "name": "explicit-math-uppercase-prime",
+    "text": "Math $AB + C'$.",
+    "segments": [
+      "$AB + C'$"
+    ]
+  },
+  {
+    "name": "explicit-math-uppercase-semicolon",
+    "text": "Math $AB + C; D$.",
+    "segments": [
+      "$AB + C; D$"
+    ]
+  },
+  {
+    "name": "explicit-math-ratio-long-names",
+    "text": "Math $distance/time + speed$.",
+    "segments": [
+      "$distance/time + speed$"
+    ]
+  },
+  {
+    "name": "explicit-math-uppercase-text-quotes",
+    "text": "Math $AB + \\text{\"speed\"}$.",
+    "segments": [
+      "$AB + \\text{\"speed\"}$"
+    ]
+  },
+  {
+    "name": "explicit-math-ratio-double-prime",
+    "text": "Math $P/R + Q''$.",
+    "segments": [
+      "$P/R + Q''$"
+    ]
+  },
+  {
+    "name": "explicit-math-uppercase-double-prime",
+    "text": "Math $AB + f''$.",
+    "segments": [
+      "$AB + f''$"
+    ]
   }
 ]

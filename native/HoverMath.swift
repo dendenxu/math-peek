@@ -176,8 +176,48 @@ enum HoverMath {
         let candidate = repair(Array(text[start..<end]), padding: false, continuationIndent: true)
         guard bareSource(candidate), braceBalance(candidate) == 0,
               regex(#"\\([A-Za-z]+)"#, candidate).contains(where: { commands.contains((candidate as NSString).substring(with: $0.range(at: 1))) }),
-              !regex(#"[=+*/^_{}]"#, candidate).isEmpty else { return nil }
+              !regex(#"[=+*/^_{}]"#, candidate).isEmpty else { return inlineBoxed(text, offset) }
         return start..<end
+    }
+
+    private static func inlineBoxed(_ text: Scalars, _ offset: Int) -> Range<Int>? {
+        var index = 0
+        let command = Array("\\boxed".unicodeScalars)
+        while index <= offset {
+            if (index == 0 || text[index - 1] == "\n"), let end = skipFence(text, index) {
+                index = end
+                continue
+            }
+            if text[index] == "`", !escaped(text, index), let end = skipCode(text, index) {
+                index = end
+                continue
+            }
+            guard matches(text, command, at: index), !escaped(text, index) else { index += 1; continue }
+            var opening = index + command.count
+            while opening < text.count && text[opening].properties.isWhitespace { opening += 1 }
+            guard opening < text.count, text[opening] == "{" else { index += command.count; continue }
+            var depth = 1
+            var end = opening + 1
+            let limit = min(text.count, index + 2048)
+            while end < limit && depth > 0 {
+                if !escaped(text, end) { depth += text[end] == "{" ? 1 : text[end] == "}" ? -1 : 0 }
+                end += 1
+            }
+            // Do not extract an inner fragment from an unfinished outer box.
+            guard depth == 0 else { return nil }
+            if index <= offset && offset < end {
+                var lineStart = index
+                while lineStart > 0 && text[lineStart - 1] != "\n" { lineStart -= 1 }
+                let prefix = string(text[lineStart..<index])
+                let prefixScalars = Array(prefix.unicodeScalars)
+                let quoteCount = prefixScalars.indices.filter { prefixScalars[$0] == "\"" && !escaped(prefixScalars, $0) }.count
+                guard quoteCount % 2 == 0, regex(#"^\s*(?:[>$%]\s*)?(?:(?:echo|printf|print|return|const|let|var|def|fn)\b|[A-Za-z_][A-Za-z0-9_]*\s*=)"#, prefix).isEmpty else { return nil }
+                let candidate = repair(Array(text[index..<end]), padding: false, continuationIndent: true)
+                return bareSource(candidate.replacingOccurrences(of: "'", with: "")) ? index..<end : nil
+            }
+            index = end
+        }
+        return nil
     }
     private static func insideCode(_ text: Scalars, _ offset: Int) -> Bool {
         var index = 0
@@ -315,11 +355,51 @@ enum HoverMath {
         }
         return nil
     }
+
+    private static func shellVariableEnd(_ text: Scalars, _ start: Int) -> Int? {
+        var end = start + 1
+        let braced = end < text.count && text[end] == "{"
+        if braced { end += 1 }
+        let nameStart = end
+        guard end < text.count, letter(text[end]) || text[end] == "_" else { return nil }
+        while end < text.count && (letter(text[end]) || (48...57).contains(text[end].value) || text[end] == "_") { end += 1 }
+        let name = text[nameStart..<end]
+        if braced {
+            guard end < text.count, text[end] == "}" else { return nil }
+            end += 1
+        }
+        if end < text.count && text[end] == "$" { return nil }
+        if end < text.count && text[end] == "/" {
+            // A slash can also be division: preserve $x/y$ and $P/R$.
+            var pathEnd = end + 1
+            while pathEnd < text.count && !text[pathEnd].properties.isWhitespace &&
+                    !["\"", "'", "$"].contains(text[pathEnd]) { pathEnd += 1 }
+            if pathEnd + 1 < text.count, text[pathEnd] == "$",
+               text[pathEnd - 1] == ":" || text[pathEnd - 1] == "/",
+               letter(text[pathEnd + 1]) || text[pathEnd + 1] == "_" || text[pathEnd + 1] == "{" {
+                return pathEnd
+            }
+            return pathEnd < text.count && text[pathEnd] == "$" ? nil : pathEnd
+        }
+        let variable = braced || name.count > 1 && name.allSatisfy { !letter($0) || (65...90).contains($0.value) }
+        guard variable, end == text.count || text[end].properties.isWhitespace || text[end] == "\"" || text[end] == "'" else { return nil }
+        return end
+    }
+
     private static func expression(_ text: Scalars, _ offset: Int, padding: Bool) -> Range<Int>? {
         var i = 0
         while i < text.count && i <= offset {
             if (i == 0 || text[i - 1] == "\n"), let end = skipFence(text, i) { i = end; continue }
             if text[i] == "`", !escaped(text, i), let end = skipCode(text, i) { i = end; continue }
+            if text[i] == "$", !escaped(text, i), let end = shellVariableEnd(text, i) {
+                // A variable or path prefix is also legal TeX. Keep complete
+                // math such as $P/R + Q$ before skipping shell expansions.
+                let closingDollar = closing(text, opening: ["$"], closing: ["$"], start: i, padding: padding)
+                let crossesQuotedArguments = closingDollar.map {
+                    !regex(#"(["'])\s+\1$"#, string(text[(i + 1)..<$0])).isEmpty
+                } ?? false
+                if closingDollar == nil || closingDollar == end || crossesQuotedArguments { i = end; continue }
+            }
             var opening: Scalars = []
             var close: Scalars = []
             if !escaped(text, i) {

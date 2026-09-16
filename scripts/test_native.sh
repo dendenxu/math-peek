@@ -42,6 +42,8 @@ fi
 
 swift build -c release --product MathPeek
 bin_dir="$(swift build -c release --show-bin-path)"
+xcrun swiftc -O native/HoverMath.swift tests/native_math/main.swift -o "$bin_dir/native-math-tests"
+"$bin_dir/native-math-tests"
 xcrun swiftc native/HoverApplications.swift tests/hover_applications/main.swift -o "$bin_dir/hover-applications-tests"
 "$bin_dir/hover-applications-tests"
 xcrun swiftc native/DiagnosticWriter.swift tests/diagnostic_writer/main.swift -o "$bin_dir/diagnostic-writer-tests"
