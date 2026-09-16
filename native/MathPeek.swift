@@ -31,6 +31,12 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     var hoverApplicationsMenu: NSMenu!
     let hoverApplications = HoverApplications()
     var settingsTimer: Timer?
+    private var loginStatus: SMAppService.Status = .notRegistered
+    private var loginStatusReadInFlight = false
+    private var loginStatusGeneration = 0
+    private let loginStatusQueue = DispatchQueue(label: "local.mathpeek.login-status", qos: .utility)
+    private let statusWriter = DiagnosticWriter(url: FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Caches/Math Peek/app-status.json"))
     var showingSetup = false
     var setupError = ""
     var lastSetupState = ""
@@ -61,8 +67,10 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationLaunched(_:)),
             name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         if ProcessInfo.processInfo.arguments.contains("--enable-login") { setLogin(true) }
+        refreshLoginStatus()
         refreshSetupState()
         settingsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.refreshLoginStatus()
             self?.refreshSetupState()
         }
         if pendingPresentation == .reader {
@@ -307,10 +315,29 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         updateHoverApplications()
     }
 
+    private func refreshLoginStatus() {
+        guard !loginStatusReadInFlight else { return }
+        loginStatusReadInFlight = true
+        let generation = loginStatusGeneration
+        // ServiceManagement may wait on system IPC; keep polling off the hover run loop.
+        loginStatusQueue.async { [weak self] in
+            let status = SMAppService.mainApp.status
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.loginStatusReadInFlight = false
+                guard generation == self.loginStatusGeneration else { return }
+                if self.loginStatus != status {
+                    self.loginStatus = status
+                    self.refreshSetupState(force: true)
+                }
+            }
+        }
+    }
+
     func refreshSetupState(force: Bool = false) {
         guard hover != nil else { return }
         let trusted = AXIsProcessTrusted()
-        let login = SMAppService.mainApp.status
+        let login = loginStatus
         let applicationCount = hoverApplications.enabledBundleIdentifiers.count
         let summary = !hover.enabled ? "Hover paused" : applicationCount == 0 ? "No terminal apps enabled"
             : !trusted ? "Accessibility permission required" : hover.captureIssue ?? "Hover ready - selected terminal apps"
@@ -328,11 +355,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         guard force || serialized != lastSetupState else { return }
         lastSetupState = serialized
         if ready { call("setSetupState", [state]) }
-        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/Math Peek")
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        let target = directory.appendingPathComponent("app-status.json")
-        try? data.write(to: target, options: [.atomic])
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: target.path)
+        statusWriter.write(data)
     }
 
     @objc func toggleLogin() {
@@ -341,6 +364,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     }
 
     func setLogin(_ enabled: Bool) {
+        loginStatusGeneration += 1
         setupError = ""
         do {
             if enabled {
@@ -354,6 +378,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         } catch {
             setupError = "无法更改登录启动：\(error.localizedDescription)"
         }
+        loginStatus = SMAppService.mainApp.status
         refreshSetupState(force: true)
         if !setupError.isEmpty { showSetup() }
     }

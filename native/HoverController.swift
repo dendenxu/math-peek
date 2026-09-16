@@ -26,6 +26,8 @@ final class HoverController: NSObject {
     var lastTrust: Bool?
     private(set) var allowedBundleIdentifiers: Set<String>
     private(set) var captureIssue: String?
+    private let diagnosticWriter = DiagnosticWriter(url: FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Caches/Math Peek/hover-status.json"))
     let resources: URL
     let system = AXUIElementCreateSystemWide()
 
@@ -126,15 +128,11 @@ final class HoverController: NSObject {
             }
         }
         guard Bundle.main.bundleIdentifier == "local.mathpeek.preview" else { return }
-        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/Math Peek")
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let state: [String: Any] = ["stage": stage, "trusted": AXIsProcessTrusted(), "enabled": enabled, "last_popup_latency_ms": Int(lastPopupLatencyMS),
                                     "renderer": "swiftmath", "popup_width": Int(panel.frame.width), "popup_height": Int(panel.frame.height),
                                     "time": ISO8601DateFormatter().string(from: Date()), "pid": ProcessInfo.processInfo.processIdentifier]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]) {
-            let target = directory.appendingPathComponent("hover-status.json")
-            try? data.write(to: target, options: [.atomic])
-            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: target.path)
+            diagnosticWriter.write(data)
         }
     }
 

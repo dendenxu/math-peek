@@ -196,6 +196,9 @@ The setup and reading windows display hover permission status. Local diagnostics
 in `~/Library/Caches/Math Peek/hover-status.json` record stage, permission, process,
 and timing information. `~/Library/Caches/Math Peek/app-status.json` records setup,
 hover, and login-startup state. Neither diagnostic file includes terminal text.
+Snapshots are written on a background queue, keeping only the latest pending
+state so slow disk access does not block hover. Login-startup status polling also
+runs in the background.
 
 ## Development
 
