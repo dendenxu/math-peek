@@ -22,18 +22,20 @@
     <section id="setup-panel" class="setup-panel" aria-labelledby="setup-title">
       <div class="setup-heading"><div><h2 id="setup-title">设置悬停预览</h2><p>完成后常驻菜单栏。把鼠标停在已添加终端的公式上即可阅读。</p></div><span id="setup-progress" role="status">正在读取设置</span></div>
       <div class="setup-steps">
-        <div class="setup-step"><span class="setup-number" aria-hidden="true">1</span><div class="setup-step-copy"><h3>允许辅助功能访问</h3><p id="setup-permission-status">用于读取鼠标下的终端文字。</p></div><button id="setup-permission-button" type="button">允许访问</button></div>
-        <div class="setup-step"><span class="setup-number" aria-hidden="true">2</span><label class="setup-step-copy" for="setup-hover-toggle"><h3>开启悬停预览</h3><p>鼠标移到公式上显示，移开收起。自动发现常见终端；自研应用可在菜单栏 Terminal Apps 中添加。</p></label><input id="setup-hover-toggle" type="checkbox" aria-label="开启悬停预览" disabled></div>
-        <div class="setup-step"><span class="setup-number" aria-hidden="true">3</span><label class="setup-step-copy" for="setup-login-toggle"><h3>登录时自动启动</h3><p id="setup-login-status">登录后在后台运行，无需打开阅读窗口。</p></label><input id="setup-login-toggle" type="checkbox" aria-label="登录时自动启动" disabled></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">1</span><div class="setup-step-copy"><h3>选择终端应用</h3><p id="setup-terminals-status">正在读取已启用的终端…</p><p>自动发现常见终端，也可添加自研应用。添加后立即生效，无需刷新或重启。</p></div><button id="setup-add-terminal-button" type="button">添加终端…</button></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">2</span><div class="setup-step-copy"><h3>允许辅助功能访问</h3><p id="setup-permission-status">用于读取鼠标下的终端文字。</p></div><button id="setup-permission-button" type="button">允许访问</button></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">3</span><label class="setup-step-copy" for="setup-hover-toggle"><h3>开启悬停预览</h3><p>切回终端，将鼠标停在 <code>$...$</code>、<code>$$...$$</code> 或 <code>\[...\]</code> 中的公式上。无需选中或复制，移开鼠标即收起。</p></label><input id="setup-hover-toggle" type="checkbox" aria-label="开启悬停预览" disabled></div>
+        <div class="setup-step"><span class="setup-number" aria-hidden="true">4</span><label class="setup-step-copy" for="setup-login-toggle"><h3>登录时自动启动</h3><p id="setup-login-status">登录后在后台运行，无需打开阅读窗口。</p></label><input id="setup-login-toggle" type="checkbox" aria-label="登录时自动启动" disabled></div>
       </div>
+      <p class="setup-compatibility">悬停需要终端提供原生文字及字符位置接口。添加应用会立即启用监听；若接口不完整，菜单顶部会显示原因，也可复制文字后使用粘贴预览。</p>
       <p id="setup-error" class="setup-error" role="alert" hidden></p>
       <div class="setup-bottom"><p id="setup-note">以后可从菜单栏打开设置或阅读窗口。</p><div class="setup-bottom-actions"><button id="open-reader-button" class="quiet" type="button">打开阅读窗口</button><button id="finish-setup-button" class="primary" type="button">完成设置，后台运行</button></div></div>
     </section>
     <nav class="toolbar" aria-label="预览操作">
       <div class="actions">
         <button id="paste-button" class="primary" type="button">粘贴并预览 <kbd>⌘V</kbd></button>
-        <button id="capture-button" type="button">读取终端</button>
-        <label id="follow-control" class="follow-control"><input id="follow-toggle" type="checkbox"><span>跟随终端</span></label>
+        <button id="capture-button" type="button" title="读取最后聚焦的已启用终端：优先选区，否则读取可见内容">读取终端</button>
+        <label id="follow-control" class="follow-control" title="每两秒读取该终端的可见内容；需要终端提供辅助功能文本接口"><input id="follow-toggle" type="checkbox"><span>跟随终端</span></label>
       </div>
       <div class="view-actions">
         <label class="mode-control" for="mode-select">内容<select id="mode-select"><option value="markdown">Markdown + 公式</option><option value="tex">纯 LaTeX 公式</option></select></label>

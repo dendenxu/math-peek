@@ -46,6 +46,10 @@ xcrun swiftc native/HoverApplications.swift tests/hover_applications/main.swift 
 "$bin_dir/hover-applications-tests"
 xcrun swiftc native/DiagnosticWriter.swift tests/diagnostic_writer/main.swift -o "$bin_dir/diagnostic-writer-tests"
 "$bin_dir/diagnostic-writer-tests"
+xcrun swiftc native/TerminalCapture.swift tests/terminal_capture/main.swift -o "$bin_dir/terminal-capture-tests"
+"$bin_dir/terminal-capture-tests"
+xcrun swiftc native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
+"$bin_dir/hover-position-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
 module_dir="$bin_dir/Modules"
 # Swift 6.3's default build engine emits one combined dependency object.
@@ -63,11 +67,13 @@ xcrun swiftc -O -I "$module_dir" \
     native/HoverMath.swift native/FormulaView.swift tests/native_rendering/main.swift \
     "${math_objects[@]}" -o "$bin_dir/native-rendering-tests"
 xcrun swiftc -O -I "$module_dir" \
-    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift native/HoverController.swift \
+    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
+    native/HoverTextPosition.swift native/HoverController.swift \
     tests/hover_transitions/main.swift "${math_objects[@]}" \
     -o "$bin_dir/hover-transition-tests"
 xcrun swiftc -O -I "$module_dir" \
-    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift native/HoverController.swift \
+    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
+    native/HoverTextPosition.swift native/HoverController.swift \
     tests/panel_layout/main.swift "${math_objects[@]}" \
     -o "$bin_dir/panel-layout-tests"
 

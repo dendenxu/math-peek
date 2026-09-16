@@ -1,132 +1,125 @@
-<p align="center"><img src="assets/icon.png" width="112" alt="Math Peek icon"></p>
+<p align="center"><img src="assets/icon.png" width="112" alt="Math Peek 图标"></p>
 
 # Math Peek
 
-Hover over LaTeX in compatible terminal apps and read the rendered formula in a small macOS popup.
-No selection, remote installation, terminal image protocol, or Python process
-is needed for hover. Math Peek reads local accessibility text, extracts formulas
-in compiled Swift, and renders them with SwiftMath using AppKit and CoreText.
-The optional reading window uses bundled KaTeX for longer Markdown responses.
+**鼠标移到终端里的 LaTeX 上，直接看公式。**
 
-![A formula rendered in Math Peek's dark glass popup](screenshots/glass-preview.png)
+独立的 macOS 菜单栏应用。不用框选、复制，也不用在 SSH 服务器或 tmux 里安装东西。
+安装器、命令行工具、取字和悬停渲染均为原生实现，**不需要 Python**。
 
-The popup uses a monochrome glass background, follows the formula's size down
-to a 40 x 34 point minimum, and does not take keyboard focus. Oversized formulas
-are scaled proportionally to fit the available space. There are no animations
-or intentional hover delay. Mouse position is checked approximately every 16 ms;
-this is the polling interval, not a guarantee of total rendering latency.
+[English](README.en.md) · [下载最新版](https://github.com/dendenxu/math-peek/releases/latest)
 
-## Install
+![Math Peek 实际操作：悬停显示行内公式、带框分式和多行公式，移开后收起](screenshots/hover-demo.gif)
 
-Requires macOS 13 or later, Python 3 for the installer, and Xcode Command Line
-Tools with Swift 5.9 or later (`xcode-select --install` if needed). The first build
-needs network access to download the SwiftMath revision pinned in `Package.swift`.
+## 安装
+
+### Homebrew
+
+```sh
+brew install --cask dendenxu/tap/math-peek
+open -a "Math Peek"
+```
+
+安装预编译应用及 `math-peek` 命令，不需要 Swift 编译器或 Python。
+更新时先从菜单栏退出 Math Peek，再运行：
+
+```sh
+brew upgrade --cask dendenxu/tap/math-peek
+```
+
+### 直接下载
+
+从 [GitHub Releases](https://github.com/dendenxu/math-peek/releases/latest) 下载
+`Math.Peek-1.1.0-universal.zip`，解压后把 `Math Peek.app` 拖到“应用程序”，然后打开。
+同一个应用支持 Apple Silicon 和 Intel Mac，要求 macOS 13 或更新版本。
+
+当前发布包已做本地签名，但**尚未经过 Apple 公证**。如果首次打开被 macOS 拦截，
+请到“系统设置 → 隐私与安全性”确认该应用并选择“仍要打开”。Release 附带 SHA256 校验文件。
+
+### 从源码安装
+
+需要 Swift 5.9 或更新版本。新版 Xcode Command Line Tools 可直接构建；
+较旧的 Swift 工具链需要完整 Xcode 才能正确打包应用资源，安装器会检查并提示。
+第一次构建会下载锁定版本的 SwiftMath 依赖。
 
 ```sh
 git clone https://github.com/dendenxu/math-peek.git
 cd math-peek
-python3 install.py --skip-iterm
+./install.sh
 open "$HOME/Applications/Math Peek.app"
 ```
 
-This builds the app and installs native hover, its math font resource bundle,
-and the clipboard/file reader. To also enable the
-optional iTerm2 selection/screen capture, follow mode, and RPC integration, use
-`python3 install.py` without `--skip-iterm`. Those features install Python
-dependencies into a private environment under
-`~/Library/Application Support/Math Peek/runtime`.
+默认安装完整功能，并自动发现已安装的终端，**包括 iTerm2**；没有 `--skip-iterm`，
+也不需要单独安装终端插件或开启 iTerm2 Python API。
+源码安装将应用放在 `~/Applications/Math Peek.app`，命令放在 `~/.local/bin/math-peek`。
 
-The app is installed in `~/Applications/Math Peek.app`. The Python command-line
-launcher is linked at `~/.local/bin/math-peek`; keep the clone in place and add
-`~/.local/bin` to your `PATH` if you want to use that command.
+## 第一次使用
 
-## First launch
+1. 打开 Math Peek，在设置页允许“辅助功能”访问。
+2. 确认“悬停预览”已开启。设置页会显示当前启用的终端，常见应用会自动发现。
+3. 切回终端，让它处于前台，把鼠标停在完整公式的字符上；不用点击或选中。
+4. 鼠标移开公式，浮窗自动收起。可以按需要开启“登录时自动启动”。
 
-The setup window walks through Accessibility permission, hover preview, and
-launching at login. Allow **Math Peek** in **System Settings > Privacy & Security
-> Accessibility**, choose whether to launch at login, then finish setup.
+可以在终端输出这两行试一下：
 
-Math Peek runs in the menu bar without keeping a Dock icon or reading window
-open. After setup is complete, a normal background launch creates no window or
-WebKit view; those are created when you open the reader or setup. Use **Setup...**
-from the `M∑` menu to revisit setup, **Open Reader** when
-needed, or **Launch at Login** to change startup behavior. Login startup uses
-macOS `SMAppService`; macOS may ask you to approve
-it in **System Settings > General > Login Items**.
+```sh
+printf '%s\n' '$e^{i\pi}+1=0$' '$$\boxed{K = \frac{P}{P+R}}$$'
+```
 
-![First-run setup with permission and login-start controls](screenshots/setup.png)
+应用完成设置后常驻菜单栏 `M∑`，不需要一直打开阅读窗口。
+可从 `M∑ → Setup...` 重新打开设置。
 
-## Use
+### 添加其他终端之后怎么用？
 
-Bring an enabled terminal app to the foreground and move the pointer onto a formula. Move away to
-dismiss the popup. Hover recognizes `$...$`, `$$...$$`, `\(...\)`, and `\[...\]`.
-It also recognizes standalone raw TeX such as `\frac{a}{b}` and
-`v_{\mathrm{pred}} = a_{\mathrm{world}}\Delta t`, including clear wrapped
-continuations. Raw detection requires known math commands and a formula-shaped
-line; it deliberately avoids guessing from ordinary prose or shell commands.
-Matrices and `aligned` environments work within SwiftMath's supported syntax.
-An outer `\boxed{...}` renders with a native outline around the formula.
-Code spans and fenced code blocks are excluded; ambiguous currency is handled
-conservatively. Unsupported math syntax is displayed as its original source.
+在设置页点击“添加终端”，或使用 `M∑ → Terminal Apps → Add Application...`，
+选择对应的 `.app`。**添加成功后立即启用，不需要刷新或重启。**
+随后切回这个终端，把鼠标停在公式上即可。
 
-| Control | Action |
+自研应用也可以这样添加。取消勾选会立即暂停该应用的悬停；移除后不会被自动重新加回。
+`Automatically Find Terminals` 可以关闭自动发现，`Find Installed Terminals Now` 可以手动扫描。
+
+“已添加”表示允许 Math Peek 从这个应用取字，不等于它提供了完整的辅助功能接口。
+若没有弹出公式，先看设置页或菜单栏状态中的具体原因。
+
+## 终端与权限
+
+Math Peek 直接读取 macOS 辅助功能提供的原文和字符坐标，不使用 OCR，
+也不需要屏幕录制权限。悬停要求终端提供足够的文字位置接口。
+
+| 终端 | 取字方式 | 使用说明 |
+| --- | --- | --- |
+| iTerm2、系统 Terminal | 辅助功能文本与字符坐标 | 允许“辅助功能”后直接悬停 |
+| Ghostty | 能读取原文，但当前版本缺少字符位置接口 | 自动发现；悬停兼容性仍受该接口限制 |
+| cmux | 当前版本的辅助功能文本与位置接口不完整 | 自动发现；悬停兼容性仍受该接口限制 |
+| WezTerm、Alacritty、kitty、Warp、Hyper | 读取应用提供的辅助功能文本与坐标 | 默认自动发现，兼容性取决于其接口实现 |
+| 自研或其他 `.app` | 手动添加后读取辅助功能文本与坐标 | 需要公开可访问的文字和位置接口 |
+
+自动发现名单不是对每个应用、版本和全部功能的兼容性保证。
+无法可靠定位字符时会提示接口限制；仍可使用剪贴板和文件预览。
+自研终端开发者可参考[原生接口要求与已核对的限制](docs/terminal-compatibility.md)。
+
+## 公式与阅读窗口
+
+支持 `$...$`、`$$...$$`、`\(...\)`、`\[...\]`，以及包含已知数学命令的独立裸 TeX。
+支持多行 `aligned`、常见矩阵和完整外层 `\boxed{...}`。
+浮窗按公式大小调整，过大时等比缩放；同一个公式内移动鼠标不会反复跳动。
+没有人为悬停等待或窗口动画。
+
+代码块、行内代码和容易与金额混淆的文本会保守处理。
+超出 SwiftMath 支持范围的语法显示原始文本；长篇 Markdown 可用菜单栏的 `Open Reader` 阅读。
+
+| 操作 | 作用 |
 | --- | --- |
-| Menu bar `M∑ > Hover Formula Preview` | Enable or disable hover |
-| Menu bar `M∑ > Terminal Apps` | Discover, add, enable, disable, or remove terminal applications |
-| Control-Command-M in iTerm2 | Open the selection, or visible screen, in the reader; requires optional capture integration |
-| Control-Command-M in other apps | Preview the clipboard |
-| Preview Clipboard | Open copied text from any app or terminal |
-| Read Terminal / Follow Terminal | Capture once, or refresh the visible iTerm2 screen every two seconds |
-| Pure LaTeX mode | Render a formula without delimiters in the reader |
-| Services > Preview with Math Peek | Preview selected text in apps that support macOS text services |
+| `Hover Formula Preview` | 开关悬停预览 |
+| `Preview Clipboard` | 阅读剪贴板中的 Markdown / LaTeX |
+| `Control-Command-M` | 在已启用终端中读取选区或可见文本；其他应用中预览剪贴板 |
+| 阅读窗口“读取终端 / 跟随终端” | 原生读取选区或可见文本；跟随模式每两秒更新 |
+| “纯 LaTeX 公式”模式 | 渲染没有外层分隔符的公式 |
 
-The global shortcut works while Math Peek is running. It does not change shell
-or iTerm2 key bindings. If another app owns the shortcut, use the menu bar or
-reader buttons. Follow mode stops when the reading window closes or new
-clipboard/file content is opened.
+整屏读取和跟随需要终端提供可访问的选区或可见文本，不会为了取字自动全选或修改剪贴板。
+无法安全读取时会提示使用选区或剪贴板预览。整屏读取可用不代表终端同时提供悬停所需的字符坐标。
 
-### 中文快速使用
-
-首次启动按引导允许「辅助功能」、开启悬停，并选择是否登录时自动运行；完成后应用
-留在菜单栏，不常驻 Dock 或阅读窗口。需要修改时点菜单栏 `M∑ → Setup...`。
-默认自动发现并启用已安装的常见终端，包括系统 Terminal 和 iTerm2。自研或其他终端可在
-菜单栏 `M∑ → Terminal Apps → Add Application...` 中选择对应的 `.app`；同一菜单可以
-停用、移除或关闭自动发现。停用或移除的应用不会被自动重新启用。让已启用的终端处于前台，把鼠标
-移到公式上即可预览。不用框选，没有停留等待或动画；悬停
-解析和渲染全部在 Swift 应用内完成，不启动 Python 或网页。SSH 和 tmux 不需要安装
-任何东西。带分隔符的公式以及含已知数学命令的独立裸 TeX 都可识别；混在普通文字里
-的裸 TeX 可以复制到阅读窗口，切换为「纯 LaTeX 公式」。浮窗按内容自适应大小，最小
-为 40 x 34 点，过大的公式等比缩放以避免内容超出边界。
-
-### Other terminal apps
-
-Math Peek remains a standalone menu-bar app. It automatically discovers installed
-Terminal.app, iTerm2, Ghostty, WezTerm, Alacritty, kitty, Warp, and Hyper at startup,
-when a known terminal launches, and when opening **Terminal Apps**. Terminal.app and
-iTerm2 have been tested with live hover. Disable **Automatically Find Terminals**
-to control additions yourself, or use **Find Installed Terminals Now** for a manual scan.
-
-In **Terminal Apps > Add Application...**, select a terminal's `.app`, including a
-locally developed one. No Math Peek SDK, terminal plugin, or IPC integration is needed.
-The app list persists across launches; unchecking or removing an app immediately
-stops its hover preview. Discovery preserves disabled entries and does not restore
-removed apps; use **Add Application...** to restore one. An intentionally empty list
-from an older version keeps automatic discovery off until you turn it on.
-
-Discovering or adding an app allows Math Peek to try its macOS Accessibility interface; it does
-not establish compatibility. The terminal must expose an `AXTextArea`, readable
-`AXValue`, and `AXRangeForPosition` mapping screen positions to UTF-16 text ranges.
-`AXBoundsForRange` is also used when available to verify the hit. Apps that draw
-only to a canvas or GPU surface without accessible text cannot support this path.
-The menu and setup/reader status report missing text areas or position mapping. Clipboard
-and file preview remain available independently of hover support.
-
-The iTerm2 selection/screen capture, follow mode, and its Control-Command-M behavior
-remain iTerm2-specific. Adding another app enables hover, not those optional features.
-
-## Files, SSH, and tmux
-
-Run these commands on the local Mac:
+## 命令行
 
 ```sh
 math-peek --clipboard
@@ -136,116 +129,32 @@ math-peek --capture
 math-peek --follow
 ```
 
-The clipboard, file, and pipe workflows work with any terminal. Remote output
-can be brought back over an ordinary SSH pipe:
+文件和管道输入要求 UTF-8，最大 2 MB。Homebrew 安装会提供 `math-peek` 命令；
+源码安装请把 `~/.local/bin` 加入 `PATH`。旧的 Python RPC `--serve` 已移除。
+
+## 没有弹出公式？
+
+- **刚添加应用**：无需刷新。确认它在 `Terminal Apps` 中已勾选，悬停总开关已开启，再切回终端。
+- **提示辅助功能权限**：在“系统设置 → 隐私与安全性 → 辅助功能”允许 Math Peek。
+- **提示无法定位字符**：终端缺少悬停所需的原生接口；允许辅助功能或重新添加应用不能补齐该接口，可先用剪贴板预览。
+- **升级后失效**：本地签名变化可能使旧授权失效，在系统设置中移除旧条目，重新添加并允许当前 Math Peek。
+- **公式未识别**：先用上面的两个完整示例验证；不完整分隔符、代码块或无法读取的终端区域不会强行弹窗。
+- **文字能读但语法不支持**：尝试复制到阅读窗口，或改写为 SwiftMath 支持的形式。
+
+诊断位于 `~/Library/Caches/Math Peek/`，只记录状态、权限和耗时，不包含终端文字。
+状态日志和登录启动状态查询均在后台执行，避免磁盘或系统服务阻塞悬停。
+
+## 开发与发布
 
 ```sh
-ssh my-server 'cat /path/to/answer.md' | math-peek
-ssh my-server 'tmux capture-pane -p -J -S - -t session:0.0' | math-peek
-```
-
-Hover uses each enabled app's accessibility interface. iTerm2 rejoins its native
-soft wraps; other apps may expose different wrap or character-width behavior.
-For tmux, Math Peek preserves math line breaks and repairs
-split common commands such as `\fra` followed by `c` on the next row. Stable
-vertical pane borders allow extraction from one pane, including ordinary CJK
-and wide characters. Extra `│` decorations in a neighboring pane and horizontal
-split junctions such as `┤` do not interrupt the hovered pane's formula. A new
-border inside the hovered pane still stops extraction across that boundary.
-An orphan `$$` left by a formula that scrolled off screen does not consume the
-next formula's opening delimiter across a heading or explanatory prose.
-
-Repairs are intentionally narrow: within matrix or aligned-style environments,
-a lone trailing backslash on a recognizable row, or a damaged `\[8pt]` spacing
-marker at the end of a row, can be restored to a TeX line break. Existing valid
-line breaks are preserved. Missing mathematical symbols or operators are not
-inferred from context.
-The native renderer uses its default row spacing for `\\[8pt]`-style breaks;
-unsupported spacing options are omitted instead of being drawn as math text.
-
-This is a preview overlay; it does not replace characters inside the terminal.
-Unrecognizable raw TeX, hidden tmux history, uncertain pane boundaries, and complex
-emoji layouts cannot always be reconstructed. Exporting the target tmux pane
-with `capture-pane -J` is useful for those cases. Very old scrollback may not be
-exposed through iTerm2's accessibility interface. SwiftMath and the reader's
-KaTeX support subsets of mathematical TeX, not arbitrary TeX documents;
-unsupported syntax remains visible as text.
-Reader inputs are limited to 2 MB.
-
-## Permissions and local data
-
-Hover requires Math Peek's macOS Accessibility permission. It does not require
-iTerm2's Python API. Optional capture/follow features use that API and may need
-**iTerm2 Settings > General > Magic > Enable Python API**, plus first-use
-authorization. Clipboard and file preview work independently of either API.
-
-Rendering is offline: SwiftMath's math fonts are included in
-`Contents/Resources/SwiftMath_SwiftMath.bundle`; KaTeX, marked, DOMPurify, and the
-reader's fonts are bundled separately. Pasted
-remote images are not loaded, and preview links do not navigate. Content is not
-stored in browser storage. Pipe and RPC handoff files use a private local
-directory, `~/Library/Caches/Math Peek/Requests/`, and are deleted after the app
-reads them. Files left by an interrupted handoff can be removed manually.
-
-Quit Math Peek before reinstalling. This source build is signed locally; a
-rebuild can change its code signature and invalidate Accessibility permission.
-If hover stops after an update, remove the old Math Peek entry from Accessibility
-settings, add `~/Applications/Math Peek.app` again, and enable it.
-
-The setup and reading windows display hover permission status. Local diagnostics
-in `~/Library/Caches/Math Peek/hover-status.json` record stage, permission, process,
-and timing information. `~/Library/Caches/Math Peek/app-status.json` records setup,
-hover, and login-startup state. Neither diagnostic file includes terminal text.
-Snapshots are written on a background queue, keeping only the latest pending
-state so slow disk access does not block hover. Login-startup status polling also
-runs in the background.
-
-## Development
-
-The native extractor is `native/HoverMath.swift`. Hover uses that implementation
-directly; `integration/hover_math.py` is a reference implementation for tests.
-`native/FormulaView.swift` handles native measurement and rendering. SwiftPM
-builds the app from `Package.swift`; the installer copies SwiftMath's resource
-bundle into the app so rendering works without the build checkout.
-The optional iTerm2 adapter is documented in [integration/README.md](integration/README.md).
-
-```sh
-mkdir -p build
-xcrun swiftc -O native/HoverMath.swift tests/native_math/main.swift -o build/native-math-tests
-build/native-math-tests tests/native_math/fixtures.json
-python3 -m unittest discover -s tests -v
-node --test web/core.test.cjs
 scripts/test_native.sh
+node --test web/core.test.cjs
+./scripts/build_release.sh
 ```
 
-The extractor suite checks parity with the Python reference. `scripts/test_native.sh`
-builds the app and verifies native rendering, including long expressions,
-multiline layout, fitting within the popup, source fallback, and successive
-formula changes. Panel layout checks exercise the actual window-resizing path,
-including transitions from a tall formula to a small fraction or single symbol.
-For live pointer and hover-transition checks, raise the isolated
-demo from `tests/hover_demo.py` in iTerm2, pause the installed app's hover, and run
-`scripts/test_native.sh --live`. The probe needs Accessibility permission; live
-checks move the pointer and refuse to read a focused window without the explicit
-demo marker. Add `--occlusion` to test a target covered by the previous popup.
-For the agent-output regressions, put `tests/tmux_regression_demo.py` in a
-65-column right pane and its `--neighbor` / `--bottom` modes in two left panes,
-then run `scripts/test_native.sh --live --regression`. This checks wrapped raw
-TeX, damaged matrix/aligned row breaks, and a formula crossing the left panes'
-horizontal split.
-For full Kalman, matrix, and boxed examples, use `tests/tmux_full_formula_demo.py`
-(optionally `--matrices` or `--boxed`) and run
-`scripts/test_native.sh --live --full-formulas --occlusion`.
-Use `--bundle-id YOUR.APP.ID` to exercise another application displaying the isolated
-fixture. `--marker TEXT` can override its identifying marker. The harness checks only
-the target app's focused window, including app-list removal during a pending read.
-`tests/ax_probe/main.swift` also checks extraction against the demo's actual
-accessibility text. Do not use private terminal captures as repository fixtures.
+`VERSION` 控制版本号；发布脚本生成双架构 ZIP 与 SHA256 文件。
+推送 `v<版本>` tag 可触发 GitHub Actions 构建发布。默认使用本地签名；
+只有提供真实的 `DEVELOPER_ID_APPLICATION` 和 `NOTARY_PROFILE` 才进行开发者签名与 Apple 公证。
 
-The SwiftMath revision is pinned in `Package.swift` and `Package.resolved`;
-its MIT license is in `licenses/SwiftMath-LICENSE` and included in the installed
-app. Its font bundle retains the included font licenses. Reader dependency versions
-and their license files are in `web/vendor/`.
-To uninstall, disable **Launch at Login** from the menu bar, quit the app, then remove
-`~/Applications/Math Peek.app`, `~/Library/Application Support/Math Peek`, and
-`~/.local/bin/math-peek`.
+原生渲染使用 SwiftMath；阅读窗口使用本地打包的 KaTeX、marked 和 DOMPurify。
+第三方字体与库的许可证随应用一起分发。

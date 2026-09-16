@@ -85,6 +85,9 @@ $$
       trusted: state.trusted === true,
       hoverEnabled: state.hoverEnabled === true,
       hoverApplicationCount: Number.isInteger(state.hoverApplicationCount) ? state.hoverApplicationCount : 1,
+      hoverApplications: Array.isArray(state.hoverApplications) ? state.hoverApplications.filter(function (app) {
+        return app && typeof app.name === "string" && typeof app.bundleIdentifier === "string";
+      }) : [],
       loginEnabled: state.loginEnabled === true,
       loginNeedsApproval: state.loginNeedsApproval === true,
       setupComplete: state.setupComplete === true,
@@ -96,9 +99,13 @@ $$
     setupLogin.disabled = !native;
     document.getElementById("setup-permission-button").hidden = setupState.trusted;
     document.getElementById("setup-permission-status").textContent = setupState.trusted ? "已允许。终端文字仅在本机处理。" : "在系统设置的「辅助功能」中允许 Math Peek。";
+    const terminalNames = setupState.hoverApplications.map(function (app) { return app.name; });
+    document.getElementById("setup-terminals-status").textContent = setupState.hoverApplicationCount === 0
+      ? "尚未启用终端。添加应用，或在菜单栏 Terminal Apps 中勾选已有终端。"
+      : "已启用 " + setupState.hoverApplicationCount + " 个终端" + (terminalNames.length ? "：" + terminalNames.join("、") : "") + "。";
     document.getElementById("setup-login-status").textContent = setupState.loginNeedsApproval ? "等待系统批准：请在「登录项与扩展」中允许 Math Peek。" : setupState.loginEnabled ? "已开启。下次登录时在后台运行。" : "登录后在后台运行，无需打开阅读窗口。";
-    document.getElementById("setup-progress").textContent = !setupState.trusted ? "需要辅助功能权限" : setupState.hoverApplicationCount === 0 ? "尚未启用终端应用" : setupState.loginNeedsApproval ? "登录启动等待批准" : "已就绪";
-    document.getElementById("setup-note").textContent = !setupState.trusted ? "可先在后台运行；允许辅助功能访问后，悬停预览才会生效。" : !setupState.hoverEnabled ? "悬停预览当前已关闭，可随时从菜单栏开启。" : setupState.hoverApplicationCount === 0 ? "请在菜单栏 Terminal Apps 中添加或启用终端应用。" : "以后可从菜单栏打开设置或阅读窗口。";
+    document.getElementById("setup-progress").textContent = !setupState.trusted ? "需要辅助功能权限" : setupState.hoverApplicationCount === 0 ? "尚未启用终端应用" : !setupState.hoverEnabled ? "悬停预览已暂停" : setupState.loginNeedsApproval ? "登录启动等待批准" : "已就绪";
+    document.getElementById("setup-note").textContent = !setupState.trusted ? "可先在后台运行；允许辅助功能访问后，悬停预览才会生效。" : !setupState.hoverEnabled ? "悬停预览当前已关闭，可随时从菜单栏开启。" : setupState.hoverApplicationCount === 0 ? "点击「添加终端」，选择你的终端应用即可启用。" : "设置已生效。完成后切回终端，把鼠标停在公式上即可。";
     document.getElementById("setup-error").textContent = setupState.setupError;
     document.getElementById("setup-error").hidden = !setupState.setupError;
     updateSetupVisibility();
@@ -218,6 +225,7 @@ $$
   document.getElementById("capture-button").addEventListener("click", function () { post("capture"); });
   hoverPermissionButton.addEventListener("click", function () { post("hoverPermission"); });
   document.getElementById("setup-permission-button").addEventListener("click", function () { post("hoverPermission"); });
+  document.getElementById("setup-add-terminal-button").addEventListener("click", function () { post("addTerminal"); });
   setupButton.addEventListener("click", function () {
     if (setupPanel.hidden) { if (!post("showSetup")) showSetup(); }
     else if (!post("openReader")) hideSetup();

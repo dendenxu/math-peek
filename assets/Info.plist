@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>local.mathpeek.preview</string>
+    <key>CFBundleExecutable</key><string>MathPeek</string>
+    <key>CFBundleName</key><string>Math Peek</string>
+    <key>CFBundleDisplayName</key><string>Math Peek</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleIconFile</key><string>MathPeek.icns</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>LSMinimumSystemVersion</key><string>13.0</string>
+    <key>LSUIElement</key><true/>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Read selected or visible terminal text for local formula preview.</string>
+    <key>CFBundleURLTypes</key>
+    <array><dict>
+        <key>CFBundleURLName</key><string>Math Peek Actions</string>
+        <key>CFBundleURLSchemes</key><array><string>mathpeek</string></array>
+    </dict></array>
+    <key>CFBundleDocumentTypes</key>
+    <array><dict>
+        <key>CFBundleTypeName</key><string>Math Peek Text</string>
+        <key>CFBundleTypeRole</key><string>Viewer</string>
+        <key>LSHandlerRank</key><string>Alternate</string>
+        <key>LSItemContentTypes</key>
+        <array><string>public.plain-text</string><string>net.daringfireball.markdown</string><string>public.tex</string></array>
+        <key>CFBundleTypeExtensions</key>
+        <array><string>txt</string><string>md</string><string>markdown</string><string>tex</string></array>
+    </dict></array>
+    <key>NSServices</key>
+    <array><dict>
+        <key>NSMenuItem</key><dict><key>default</key><string>Preview with Math Peek</string></dict>
+        <key>NSMessage</key><string>previewSelection</string>
+        <key>NSPortName</key><string>Math Peek</string>
+        <key>NSSendTypes</key><array><string>public.utf8-plain-text</string><string>NSStringPboardType</string></array>
+    </dict></array>
+</dict>
+</plist>

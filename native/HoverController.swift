@@ -112,6 +112,8 @@ final class HoverController: NSObject {
             captureIssue = "Terminal does not expose pointer-to-text mapping"
         case "no-text-area":
             captureIssue = "No accessible terminal text under pointer"
+        case "empty-ax-text":
+            captureIssue = "Terminal does not expose visible text"
         default:
             captureIssue = nil
         }
@@ -120,6 +122,8 @@ final class HoverController: NSObject {
                 report?("此终端没有提供鼠标到文字的位置映射，无法自动悬停预览。")
             } else if stage == "no-text-area" {
                 report?("鼠标所在位置没有可读取的终端文字；应用需要提供系统辅助功能文本接口。")
+            } else if stage == "empty-ax-text" {
+                report?("此终端没有提供可读取的可见文字，暂时无法自动悬停预览。可选中文字后使用阅读窗口。")
             } else {
                 report?(!enabled ? "悬停预览已暂停。" : !AXIsProcessTrusted()
                     ? "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。"
@@ -245,10 +249,18 @@ final class HoverController: NSObject {
         for _ in 0..<8 {
             var role: CFTypeRef?
             AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-            if role as? String == kAXTextAreaRole { foundTextArea = true; break }
+            var subrole: CFTypeRef?
+            AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+            if subrole as? String == kAXSecureTextFieldSubrole { return nil }
+            if role as? String == kAXTextAreaRole || role as? String == kAXStaticTextRole {
+                foundTextArea = true
+                break
+            }
+            if role as? String == kAXTextFieldRole { return nil }
             var parent: CFTypeRef?
             guard AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &parent) == .success,
-                  let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { diagnose("no-text-area"); return nil }
+                  let parent, CFGetTypeID(parent) == AXUIElementGetTypeID(),
+                  !CFEqual(element, parent) else { break }
             element = parent as! AXUIElement
         }
         guard foundTextArea else { diagnose("no-text-area"); return nil }
@@ -260,9 +272,18 @@ final class HoverController: NSObject {
         var coordinate = point
         guard let parameter = AXValueCreate(.cgPoint, &coordinate) else { return nil }
         var rangeValue: CFTypeRef?
-        guard AXUIElementCopyParameterizedAttributeValue(element, kAXRangeForPositionParameterizedAttribute as CFString,
-                                                         parameter, &rangeValue) == .success,
-              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { diagnose("no-range-for-position"); return nil }
+        let rangeError = AXUIElementCopyParameterizedAttributeValue(element, kAXRangeForPositionParameterizedAttribute as CFString,
+                                                                    parameter, &rangeValue)
+        if rangeError != .success || rangeValue.map({ CFGetTypeID($0) != AXValueGetTypeID() }) != false {
+            if let located = accessibilityRange(at: point, element: element, text: text as NSString) {
+                var found = CFRange(location: located.location, length: located.length)
+                rangeValue = AXValueCreate(.cfRange, &found)
+            } else {
+                diagnose("no-range-for-position")
+                return nil
+            }
+        }
+        guard let rangeValue else { return nil }
         var range = CFRange()
         guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range), range.length > 0 else { diagnose("empty-character-range"); return nil }
         var boundsValue: CFTypeRef?
@@ -290,6 +311,28 @@ final class HoverController: NSObject {
         guard let formula = HoverMath.extract(text: context, offset: offset) else { diagnose("no-complete-formula"); return nil }
         diagnose("formula-found")
         return formula
+    }
+
+    private func accessibilityRange(at point: CGPoint, element: AXUIElement, text: NSString) -> NSRange? {
+        var visibleValue: CFTypeRef?
+        var visible: NSRange?
+        if AXUIElementCopyAttributeValue(element, kAXVisibleCharacterRangeAttribute as CFString, &visibleValue) == .success,
+           let visibleValue, CFGetTypeID(visibleValue) == AXValueGetTypeID() {
+            var range = CFRange()
+            if AXValueGetValue(visibleValue as! AXValue, .cfRange, &range) {
+                visible = NSRange(location: range.location, length: range.length)
+            }
+        }
+        return HoverTextPosition.range(at: point, text: text, visibleRange: visible) { range in
+            var requested = CFRange(location: range.location, length: range.length)
+            guard let value = AXValueCreate(.cfRange, &requested) else { return nil }
+            var result: CFTypeRef?
+            guard AXUIElementCopyParameterizedAttributeValue(element, kAXBoundsForRangeParameterizedAttribute as CFString,
+                                                              value, &result) == .success,
+                  let result, CFGetTypeID(result) == AXValueGetTypeID() else { return nil }
+            var bounds = CGRect.zero
+            return AXValueGetValue(result as! AXValue, .cgRect, &bounds) ? bounds : nil
+        }
     }
 
     private func matchesWrappedCell(_ element: AXUIElement, text: NSString, range: CFRange, point: CGPoint) -> Bool {

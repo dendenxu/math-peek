@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to release (for example v1.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Check version tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          test "$RELEASE_TAG" = "v$version"
+          test "$(git describe --tags --exact-match HEAD)" = "$RELEASE_TAG"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test native rendering, layout, and terminal capture
+        run: ./scripts/test_native.sh
+      - name: Test Markdown reader
+        run: node --test web/core.test.cjs
+      - name: Check installer and native CLI
+        run: |
+          bash -n install.sh scripts/build_app.sh scripts/build_release.sh
+          sh -n bin/math-peek
+          plutil -lint assets/Info.plist
+          xcrun swift build -c release --product MathPeekCLI
+          bin_dir=$(xcrun swift build -c release --show-bin-path)
+          "$bin_dir/MathPeekCLI" --help
+          if "$bin_dir/MathPeekCLI" --serve > "$RUNNER_TEMP/math-peek-serve.log" 2>&1; then
+            echo "The removed --serve option unexpectedly succeeded."
+            exit 1
+          fi
+          grep -F -- '--serve was removed' "$RUNNER_TEMP/math-peek-serve.log"
+      - name: Build universal app and checksum
+        run: ./scripts/build_release.sh
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; preserving its published artifacts."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
+            "build/release/Math.Peek-$version-universal.zip" \
+            "build/release/Math.Peek-$version-universal.zip.sha256" \
+            --verify-tag --title "Math Peek $version" \
+            --notes-file build/release/RELEASE_NOTES.md

@@ -1,65 +1,12 @@
-#!/usr/bin/env python3
-"""Open a local Markdown / LaTeX preview without terminal graphics protocols."""
+#!/bin/sh
+set -eu
 
-import argparse
-import os
-from pathlib import Path
-import subprocess
-import sys
-import tempfile
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("file", nargs="?", help="UTF-8 text, Markdown or TeX file; - reads stdin")
-    action = parser.add_mutually_exclusive_group()
-    action.add_argument("--clipboard", action="store_true", help="preview the Mac clipboard (default)")
-    action.add_argument("--capture", action="store_true", help="read iTerm2 selection / visible screen")
-    action.add_argument("--follow", action="store_true", help="follow iTerm2's current visible screen")
-    action.add_argument("--serve", action="store_true", help="register the optional math_peek() iTerm2 RPC")
-    args = parser.parse_args()
-    if args.file and any([args.clipboard, args.capture, args.follow, args.serve]):
-        parser.error("a file cannot be combined with an action option")
-    app = Path.home() / "Applications/Math Peek.app"
-    if not app.is_dir():
-        parser.error("Math Peek.app is not installed; run install.py first")
-    if args.serve:
-        python = Path.home() / "Library/Application Support/Math Peek/runtime/bin/python3"
-        adapter = app / "Contents/Resources/integration/iterm_math_peek.py"
-        os.execv(str(python), [str(python), str(adapter), "--serve", "--app", str(app)])
-    request = None
-    if args.file == "-" or (not args.file and not any([args.clipboard, args.capture, args.follow]) and not sys.stdin.isatty()):
-        text = sys.stdin.buffer.read(2 * 1024 * 1024 + 1)
-        if len(text) > 2 * 1024 * 1024:
-            parser.error("input exceeds 2 MB; choose a smaller excerpt")
-        try:
-            text.decode("utf-8")
-        except UnicodeDecodeError:
-            parser.error("input must be UTF-8 text")
-        directory = Path.home() / "Library/Caches/Math Peek/Requests"
-        if directory.is_symlink():
-            parser.error("request directory must not be a symlink")
-        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        directory.chmod(0o700)
-        fd, name = tempfile.mkstemp(prefix="math-peek-", suffix=".md", dir=directory)
-        request = Path(name)
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(text)
-        target = name
-    elif args.file:
-        path = Path(args.file).expanduser().resolve()
-        if not path.is_file():
-            parser.error("file does not exist: " + str(path))
-        if path.stat().st_size > 2 * 1024 * 1024:
-            parser.error("file exceeds 2 MB; choose a smaller excerpt")
-        target = str(path)
-    else:
-        target = "mathpeek://" + ("capture" if args.capture else "follow" if args.follow else "paste")
-    result = subprocess.run(["/usr/bin/open", "-a", str(app), target], check=False)
-    if result.returncode and request:
-        request.unlink(missing_ok=True)
-    return result.returncode
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+cli="$HOME/Applications/Math Peek.app/Contents/MacOS/MathPeekCLI"
+if [ ! -x "$cli" ]; then
+    cli="/Applications/Math Peek.app/Contents/MacOS/MathPeekCLI"
+fi
+if [ ! -x "$cli" ]; then
+    echo "math-peek: Math Peek is not installed; run ./install.sh first." >&2
+    exit 1
+fi
+exec "$cli" "$@"

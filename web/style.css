@@ -48,6 +48,7 @@ h1 { margin: 0; font: 26px/1.1 var(--serif); letter-spacing: -.5px; }
 .setup-step:last-child { padding-right: 0; border-right: 0; }
 .setup-number { padding-top: 2px; color: #777777; font-size: 11px; }
 .setup-step-copy { flex: 1; min-width: 0; }
+.setup-step-copy p { overflow-wrap: anywhere; }
 label.setup-step-copy { cursor: pointer; }
 .setup-step h3 { margin: 0; color: #cccccc; font-size: 11px; font-weight: 500; }
 .setup-step button { flex: 0 0 auto; font-size: 10px; padding: 4px 7px; }
@@ -57,6 +58,7 @@ label.setup-step-copy { cursor: pointer; }
 .setup-bottom button { flex: 0 0 auto; padding: 6px 10px; font-size: 11px; }
 .setup-bottom-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .setup-error { margin: 12px 0 0; padding: 9px 11px; color: #ededed; background: #303030; border: 1px solid #777777; border-radius: 4px; font-size: 11px; overflow-wrap: anywhere; }
+.setup-compatibility { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 12px 0 0; }
 .app-shell.setup-visible { min-height: 0; overflow-y: auto; }
 .setup-visible .toolbar, .setup-visible .workspace, .setup-visible .statusbar { display: none; }
 .setup-visible .setup-steps { grid-template-columns: minmax(0, 1fr); }

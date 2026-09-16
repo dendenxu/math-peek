@@ -9,7 +9,10 @@ let inputLimit = 2 * 1024 * 1024
 
 final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate, WKNavigationDelegate, WKScriptMessageHandler {
     enum Presentation { case reader, setup }
+    private enum TerminalReaderAction { case capture, follow }
     var pendingPresentation: Presentation?
+    private var pendingTerminalAction: TerminalReaderAction?
+    private var pendingTerminalApplication: NSRunningApplication?
     var launched = false
     var window: NSWindow!
     var web: WKWebView!
@@ -18,8 +21,10 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     var pending: (String, String)?
     var pendingStatus: String?
     var followTimer: Timer?
-    var captureTask: Process?
-    var captureExpired = false
+    private var captureRequest: UUID?
+    private var lastTerminalTarget: TerminalCaptureTarget?
+    private var followTarget: TerminalCaptureTarget?
+    private let captureQueue = DispatchQueue(label: "local.mathpeek.terminal-capture", qos: .userInitiated)
     var captureGeneration = 0
     var hotkey: EventHotKeyRef?
     var eventHandler: EventHandlerRef?
@@ -66,6 +71,11 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         launched = true
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationLaunched(_:)),
             name: NSWorkspace.didLaunchApplicationNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationActivated(_:)),
+            name: NSWorkspace.didActivateApplicationNotification, object: nil)
+        rememberTerminal(NSWorkspace.shared.frontmostApplication)
+        rememberTerminal(pendingTerminalApplication)
+        pendingTerminalApplication = nil
         if ProcessInfo.processInfo.arguments.contains("--enable-login") { setLogin(true) }
         refreshLoginStatus()
         refreshSetupState()
@@ -73,7 +83,11 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             self?.refreshLoginStatus()
             self?.refreshSetupState()
         }
-        if pendingPresentation == .reader {
+        if let action = pendingTerminalAction {
+            pendingTerminalAction = nil
+            if action == .capture { capture() }
+            else { setFollow(true); show() }
+        } else if pendingPresentation == .reader {
             show()
         } else if pendingPresentation == .setup || !defaults.bool(forKey: "setupComplete") {
             showSetup()
@@ -157,7 +171,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         menu.addItem(withTitle: "Setup...", action: #selector(showSetup), keyEquivalent: "")
         menu.addItem(withTitle: "Open Reader", action: #selector(show), keyEquivalent: "")
         menu.addItem(withTitle: "Preview Clipboard", action: #selector(paste), keyEquivalent: "")
-        menu.addItem(withTitle: "Read iTerm2 Selection / Screen", action: #selector(capture), keyEquivalent: "")
+        menu.addItem(withTitle: "Read Terminal Selection / Screen", action: #selector(capture), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         for item in menu.items { item.target = self }
@@ -230,6 +244,24 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         discoverTerminalApplications(automatically: true)
     }
 
+    @objc private func terminalApplicationActivated(_ notification: Notification) {
+        rememberTerminal(notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)
+    }
+
+    private func rememberTerminal(_ application: NSRunningApplication?) {
+        guard let application,
+              let target = TerminalCaptureTarget(application, allowedBundleIdentifiers: hoverApplications.enabledBundleIdentifiers) else { return }
+        lastTerminalTarget = target
+    }
+
+    private func preferredTerminal() -> TerminalCaptureTarget? {
+        rememberTerminal(NSWorkspace.shared.frontmostApplication)
+        guard let target = lastTerminalTarget,
+              let application = NSRunningApplication(processIdentifier: target.processIdentifier),
+              application.bundleIdentifier == target.bundleIdentifier else { return nil }
+        return TerminalCaptureTarget(application, allowedBundleIdentifiers: hoverApplications.enabledBundleIdentifiers)
+    }
+
     @objc private func toggleAutomaticTerminalDiscovery() {
         defaults.set(!defaults.bool(forKey: "autoDiscoverTerminals"), forKey: "autoDiscoverTerminals")
         discoverTerminalApplications(automatically: true)
@@ -278,6 +310,14 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     private func updateHoverApplications() {
         hover.setAllowedApplications(hoverApplications.enabledBundleIdentifiers)
+        if let target = followTarget, !hoverApplications.enabledBundleIdentifiers.contains(target.bundleIdentifier) {
+            setFollow(false)
+        }
+        if let target = lastTerminalTarget, !hoverApplications.enabledBundleIdentifiers.contains(target.bundleIdentifier) {
+            lastTerminalTarget = nil
+            captureGeneration += 1
+            captureRequest = nil
+        }
         rebuildHoverApplicationsMenu()
         refreshSetupState(force: true)
     }
@@ -297,22 +337,46 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     @objc private func addHoverApplication() {
         let picker = NSOpenPanel()
         picker.title = "Add a Terminal Application"
-        picker.message = "Choose an application with accessible terminal text and character positions."
+        picker.message = "选择终端应用（.app），添加后立即启用，无需刷新或重启。"
         picker.allowedContentTypes = [.applicationBundle]
         picker.canChooseDirectories = false
         picker.allowsMultipleSelection = true
         picker.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
         NSApp.activate(ignoringOtherApps: true)
         guard picker.runModal() == .OK else { return }
+        var added: [String] = []
         for url in picker.urls {
             guard let bundle = Bundle(url: url), let identifier = bundle.bundleIdentifier,
                   identifier != Bundle.main.bundleIdentifier else { continue }
             let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
                 ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
                 ?? url.deletingPathExtension().lastPathComponent
-            hoverApplications.add(bundleIdentifier: identifier, displayName: name)
+            if hoverApplications.add(bundleIdentifier: identifier, displayName: name) {
+                added.append(name)
+            }
         }
         updateHoverApplications()
+        let alert = NSAlert()
+        if added.isEmpty {
+            alert.messageText = "未能添加终端应用"
+            alert.informativeText = "请选择有效的终端 .app；Math Peek 不能添加自身。"
+            alert.runModal()
+            return
+        }
+        alert.messageText = "已启用 \(added.joined(separator: "、"))"
+        alert.informativeText = "无需刷新或重启。切回终端，把鼠标停在 $...$、$$...$$ 或 \\[...\\] 中的公式上，即可尝试预览，无需选中文字。\n\n终端需要提供原生文字及字符位置接口。若没有弹出预览，可在菜单顶部查看原因；接口不完整的终端可先选中文字并复制，再使用粘贴预览。"
+        if !hover.enabled {
+            alert.informativeText += "\n\n悬停预览目前已暂停，请先在菜单中勾选 Hover Formula Preview。"
+        }
+        if !AXIsProcessTrusted() {
+            alert.informativeText += "\n\n请先在系统设置中允许 Math Peek 使用辅助功能。"
+            alert.addButton(withTitle: "允许辅助功能")
+            alert.addButton(withTitle: "稍后")
+            if alert.runModal() == .alertFirstButtonReturn { allowHover() }
+        } else {
+            alert.addButton(withTitle: "知道了")
+            alert.runModal()
+        }
     }
 
     private func refreshLoginStatus() {
@@ -349,6 +413,9 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             "loginEnabled": login == .enabled, "loginNeedsApproval": login == .requiresApproval,
             "setupComplete": defaults.bool(forKey: "setupComplete"), "setupError": setupError,
             "readerLoaded": web != nil, "hoverApplicationCount": applicationCount,
+            "hoverApplications": hoverApplications.applications.filter(\.enabled).map {
+                ["name": $0.displayName, "bundleIdentifier": $0.bundleIdentifier]
+            },
             "autoDiscoverTerminals": defaults.bool(forKey: "autoDiscoverTerminals")]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
@@ -384,7 +451,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     }
 
     func shortcut() {
-        if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.googlecode.iterm2" {
+        if let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+           hoverApplications.enabledBundleIdentifiers.contains(identifier) {
             capture()
         } else {
             paste()
@@ -411,8 +479,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     @objc func about() {
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Math Peek",
-            .applicationVersion: "1.0",
-            .credits: NSAttributedString(string: "Native LaTeX hover rendering with SwiftMath. The optional Markdown reader uses KaTeX, marked, and DOMPurify. Control-Command-M opens an iTerm2 selection / screen, or the clipboard in other apps.\nSwiftMath and font licenses are bundled with SwiftMath_SwiftMath.bundle; reader licenses are in Resources/web/vendor.")
+            .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+            .credits: NSAttributedString(string: "Native LaTeX hover rendering with SwiftMath. The optional Markdown reader uses KaTeX, marked, and DOMPurify. Control-Command-M opens a selected terminal's selection / screen, or the clipboard in other apps.\nSwiftMath and font licenses are bundled with SwiftMath_SwiftMath.bundle; reader licenses are in Resources/web/vendor.")
         ])
     }
 
@@ -457,8 +525,10 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     func setFollow(_ enabled: Bool) {
         captureGeneration += 1
+        captureRequest = nil
         followTimer?.invalidate()
         followTimer = nil
+        followTarget = enabled ? preferredTerminal() : nil
         if ready { call("setFollow", [enabled]) }
         if enabled {
             followTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -469,73 +539,47 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     }
 
     func captureTerminal(following: Bool) {
-        guard captureTask == nil else { return }
+        guard !following || captureRequest == nil else { return }
+        // Resolve the terminal before activating the reader, which changes the frontmost app.
+        let target = following ? followTarget : preferredTerminal()
         if !following { show() }
-        let python = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Math Peek/runtime/bin/python3")
-        guard FileManager.default.isExecutableFile(atPath: python.path) else {
+        guard let target else {
             setFollow(false)
-            status("iTerm2 接口未安装；可以先复制内容，再用粘贴预览。")
+            status("请先聚焦已启用的终端窗口，再按 Control-Command-M；也可以复制后粘贴预览。")
             return
         }
-        let process = Process()
         let generation = captureGeneration
-        process.executableURL = python
-        process.arguments = [resources.appendingPathComponent("integration/iterm_math_peek.py").path, "--capture"]
-        if following { process.arguments?.append("--screen") }
-        let output = Pipe()
-        let errors = Pipe()
-        process.standardOutput = output
-        process.standardError = errors
-        captureExpired = false
-        captureTask = process
-        status(following ? "正在跟随 iTerm2 可见内容…" : "正在读取 iTerm2；首次连接可能需要在 iTerm2 里允许脚本访问。")
-        do {
-            try process.run()
-        } catch {
-            captureTask = nil
-            setFollow(false)
-            status("读取失败：\(error.localizedDescription)。也可以复制后粘贴预览。")
-            return
-        }
-        // Drain both pipes while the child runs: terminal selections can exceed pipe capacity.
-        DispatchQueue.global(qos: .userInitiated).async {
-            let errorBox = DataBox()
-            let group = DispatchGroup()
-            group.enter()
-            DispatchQueue.global(qos: .utility).async {
-                errorBox.data = errors.fileHandleForReading.readDataToEndOfFile()
-                group.leave()
-            }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            group.wait()
-            DispatchQueue.main.async {
-                self.captureTask = nil
-                guard !self.captureExpired, self.captureGeneration == generation else { return }
-                let value = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-                guard process.terminationStatus == 0, let value,
-                      let text = value["text"] as? String else {
+        let request = UUID()
+        captureRequest = request
+        status(following ? "正在跟随 \(target.displayName) 可见内容…" : "正在读取 \(target.displayName) 选区或可见内容…")
+        captureQueue.async { [weak self] in
+            // Superseded requests waiting on the serial AX queue need no terminal access.
+            let current = DispatchQueue.main.sync { self?.captureRequest == request }
+            guard current else { return }
+            let result = Result { try TerminalCapture().read(target, selectionFirst: !following) }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.captureRequest == request else { return }
+                self.captureRequest = nil
+                guard self.captureGeneration == generation,
+                      self.hoverApplications.enabledBundleIdentifiers.contains(target.bundleIdentifier),
+                      !following || self.followTimer != nil else { return }
+                guard AXIsProcessTrusted() else {
                     self.setFollow(false)
-                    let detail = value?["error"] as? String ?? String(data: errorBox.data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    self.status("读取 iTerm2 失败。可复制文字后按 Control-Command-M。\(detail.prefix(240))")
+                    self.status(TerminalCaptureError.permission.localizedDescription)
                     return
                 }
-                if following && self.followTimer == nil { return }
-                if text.isEmpty {
-                    self.status("iTerm2 当前没有可读取的文字。")
-                } else {
-                    let source = value["source"] as? String ?? "iTerm2"
-                    self.setContent(text, label: source.contains("selection") ? "iTerm2 选区" : "iTerm2 可见内容")
+                switch result {
+                case .success(let captured):
+                    if captured.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        self.status("\(target.displayName) 当前没有可读取的文字。")
+                    } else {
+                        self.setContent(captured.text, label: "\(target.displayName) \(captured.isSelection ? "选区" : "可见内容")")
+                    }
+                case .failure(let error):
+                    self.setFollow(false)
+                    self.status("读取 \(target.displayName) 失败：\(error.localizedDescription)")
                 }
             }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self, weak process] in
-            guard let self, let process, self.captureTask === process, process.isRunning else { return }
-            self.captureExpired = true
-            process.terminate()
-            self.setFollow(false)
-            self.status("读取超时。请在 iTerm2 允许 Math Peek 的 Python API 访问，或复制后粘贴预览。")
         }
     }
 
@@ -554,6 +598,7 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             if !hotkeyAvailable { status("全局快捷键 Control-Command-M 已被占用；可使用菜单栏里的粘贴预览。") }
         case "paste": paste()
         case "capture": capture()
+        case "addTerminal": addHoverApplication()
         case "follow": setFollow(body["enabled"] as? Bool ?? false)
         case "hoverPermission": allowHover()
         case "setHover": setHover(body["enabled"] as? Bool ?? false)
@@ -568,10 +613,16 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             if url.scheme == "mathpeek" {
+                if !launched, url.host == "capture" || url.host == "follow" {
+                    // Launch Services may deliver the URL before discovery and hover setup.
+                    pendingTerminalAction = url.host == "capture" ? .capture : .follow
+                    pendingTerminalApplication = NSWorkspace.shared.frontmostApplication
+                    continue
+                }
                 switch url.host {
                 case "paste": paste()
                 case "capture": capture()
-                case "follow": show(); setFollow(true)
+                case "follow": setFollow(true); show()
                 case "setup": showSetup()
                 default: show()
                 }
@@ -621,9 +672,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         followTimer?.invalidate()
         settingsTimer?.invalidate()
         hover.timer?.invalidate()
-        captureTask?.terminate()
+        captureGeneration += 1
+        captureRequest = nil
         if let hotkey { UnregisterEventHotKey(hotkey) }
     }
 }
-
-final class DataBox: @unchecked Sendable { var data = Data() }

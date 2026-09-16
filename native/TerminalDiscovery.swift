@@ -5,6 +5,7 @@ enum TerminalDiscovery {
         ("com.apple.Terminal", "Terminal"),
         ("com.googlecode.iterm2", "iTerm2"),
         ("com.mitchellh.ghostty", "Ghostty"),
+        ("com.cmuxterm.app", "cmux"),
         ("com.github.wez.wezterm", "WezTerm"),
         ("org.alacritty", "Alacritty"),
         ("net.kovidgoyal.kitty", "kitty"),
