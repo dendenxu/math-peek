@@ -72,7 +72,7 @@ conservatively. Unsupported math syntax is displayed as its original source.
 | Control | Action |
 | --- | --- |
 | Menu bar `M∑ > Hover Formula Preview` | Enable or disable hover |
-| Menu bar `M∑ > Terminal Apps` | Add, enable, disable, or remove a terminal application |
+| Menu bar `M∑ > Terminal Apps` | Discover, add, enable, disable, or remove terminal applications |
 | Control-Command-M in iTerm2 | Open the selection, or visible screen, in the reader; requires optional capture integration |
 | Control-Command-M in other apps | Preview the clipboard |
 | Preview Clipboard | Open copied text from any app or terminal |
@@ -89,8 +89,9 @@ clipboard/file content is opened.
 
 首次启动按引导允许「辅助功能」、开启悬停，并选择是否登录时自动运行；完成后应用
 留在菜单栏，不常驻 Dock 或阅读窗口。需要修改时点菜单栏 `M∑ → Setup...`。
-默认启用 iTerm2。其他终端可在菜单栏 `M∑ → Terminal Apps → Add Application...` 中选择
-对应的 `.app`，勾选启用；同一菜单可以停用或移除。让已启用的终端处于前台，把鼠标
+默认自动发现并启用已安装的常见终端，包括系统 Terminal 和 iTerm2。自研或其他终端可在
+菜单栏 `M∑ → Terminal Apps → Add Application...` 中选择对应的 `.app`；同一菜单可以
+停用、移除或关闭自动发现。停用或移除的应用不会被自动重新启用。让已启用的终端处于前台，把鼠标
 移到公式上即可预览。不用框选，没有停留等待或动画；悬停
 解析和渲染全部在 Swift 应用内完成，不启动 Python 或网页。SSH 和 tmux 不需要安装
 任何东西。带分隔符的公式以及含已知数学命令的独立裸 TeX 都可识别；混在普通文字里
@@ -99,13 +100,20 @@ clipboard/file content is opened.
 
 ### Other terminal apps
 
-Math Peek remains a standalone menu-bar app. In **Terminal Apps > Add Application...**,
-select a terminal's `.app`, including a locally developed one. No Math Peek SDK,
-terminal plugin, or IPC integration is needed. The app list persists across launches;
-unchecking or removing an app immediately stops its hover preview. iTerm2 is enabled
-by default, and an intentionally empty list stays empty after restarting.
+Math Peek remains a standalone menu-bar app. It automatically discovers installed
+Terminal.app, iTerm2, Ghostty, WezTerm, Alacritty, kitty, Warp, and Hyper at startup,
+when a known terminal launches, and when opening **Terminal Apps**. Terminal.app and
+iTerm2 have been tested with live hover. Disable **Automatically Find Terminals**
+to control additions yourself, or use **Find Installed Terminals Now** for a manual scan.
 
-Adding an app allows Math Peek to try its macOS Accessibility interface; it does
+In **Terminal Apps > Add Application...**, select a terminal's `.app`, including a
+locally developed one. No Math Peek SDK, terminal plugin, or IPC integration is needed.
+The app list persists across launches; unchecking or removing an app immediately
+stops its hover preview. Discovery preserves disabled entries and does not restore
+removed apps; use **Add Application...** to restore one. An intentionally empty list
+from an older version keeps automatic discovery off until you turn it on.
+
+Discovering or adding an app allows Math Peek to try its macOS Accessibility interface; it does
 not establish compatibility. The terminal must expose an `AXTextArea`, readable
 `AXValue`, and `AXRangeForPosition` mapping screen positions to UTF-16 text ranges.
 `AXBoundsForRange` is also used when available to verify the hit. Apps that draw

@@ -251,7 +251,7 @@ func correct(_ value: String, _ expected: [String]) -> Bool {
 }
 var checkedRecoveredIndices = Set<Int>()
 for target in extraRows + aligned {
-    guard let index = target.sourceIndex, recoveredPointIndices.contains(index),
+    guard !target.observeOnly, let index = target.sourceIndex, recoveredPointIndices.contains(index),
           checkedRecoveredIndices.insert(index).inserted else { continue }
     for attempt in 1...5 {
         let result = hover.readFormula(at: target.point, pid: terminal.processIdentifier)

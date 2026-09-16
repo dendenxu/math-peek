@@ -40,6 +40,12 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         defaults.register(defaults: ["hoverEnabled": true, "setupComplete": false])
+        if defaults.object(forKey: "autoDiscoverTerminals") == nil {
+            defaults.set(!hoverApplications.hasLegacyEmptySelection, forKey: "autoDiscoverTerminals")
+        }
+        if defaults.bool(forKey: "autoDiscoverTerminals") {
+            hoverApplications.discover(TerminalDiscovery.installedApplications())
+        }
         setupMenu()
         registerHotkey()
         NSApp.servicesProvider = self
@@ -52,6 +58,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
             self.refreshSetupState()
         }
         launched = true
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(terminalApplicationLaunched(_:)),
+            name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         if ProcessInfo.processInfo.arguments.contains("--enable-login") { setLogin(true) }
         refreshSetupState()
         settingsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -193,8 +201,36 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        if menu === hoverApplicationsMenu { rebuildHoverApplicationsMenu() }
+        if menu === hoverApplicationsMenu {
+            discoverTerminalApplications(automatically: true)
+            rebuildHoverApplicationsMenu()
+        }
         refreshSetupState()
+    }
+
+    private func discoverTerminalApplications(automatically: Bool) {
+        guard !automatically || defaults.bool(forKey: "autoDiscoverTerminals") else { return }
+        if hoverApplications.discover(TerminalDiscovery.installedApplications()) {
+            updateHoverApplications()
+        }
+    }
+
+    @objc private func terminalApplicationLaunched(_ notification: Notification) {
+        guard let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              let identifier = application.bundleIdentifier,
+              TerminalDiscovery.knownBundleIdentifiers.contains(identifier) else { return }
+        discoverTerminalApplications(automatically: true)
+    }
+
+    @objc private func toggleAutomaticTerminalDiscovery() {
+        defaults.set(!defaults.bool(forKey: "autoDiscoverTerminals"), forKey: "autoDiscoverTerminals")
+        discoverTerminalApplications(automatically: true)
+        rebuildHoverApplicationsMenu()
+        refreshSetupState(force: true)
+    }
+
+    @objc private func findInstalledTerminals() {
+        discoverTerminalApplications(automatically: false)
     }
 
     private func rebuildHoverApplicationsMenu() {
@@ -222,6 +258,14 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         let add = NSMenuItem(title: "Add Application...", action: #selector(addHoverApplication), keyEquivalent: "")
         add.target = self
         hoverApplicationsMenu.addItem(add)
+        hoverApplicationsMenu.addItem(.separator())
+        let automatic = NSMenuItem(title: "Automatically Find Terminals", action: #selector(toggleAutomaticTerminalDiscovery), keyEquivalent: "")
+        automatic.state = defaults.bool(forKey: "autoDiscoverTerminals") ? .on : .off
+        automatic.target = self
+        hoverApplicationsMenu.addItem(automatic)
+        let discover = NSMenuItem(title: "Find Installed Terminals Now", action: #selector(findInstalledTerminals), keyEquivalent: "")
+        discover.target = self
+        hoverApplicationsMenu.addItem(discover)
     }
 
     private func updateHoverApplications() {
@@ -277,7 +321,8 @@ final class MathPeek: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuD
         let state: [String: Any] = ["trusted": trusted, "hoverEnabled": hover.enabled,
             "loginEnabled": login == .enabled, "loginNeedsApproval": login == .requiresApproval,
             "setupComplete": defaults.bool(forKey: "setupComplete"), "setupError": setupError,
-            "readerLoaded": web != nil, "hoverApplicationCount": applicationCount]
+            "readerLoaded": web != nil, "hoverApplicationCount": applicationCount,
+            "autoDiscoverTerminals": defaults.bool(forKey: "autoDiscoverTerminals")]
         guard let data = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys]),
               let serialized = String(data: data, encoding: .utf8) else { return }
         guard force || serialized != lastSetupState else { return }

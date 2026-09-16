@@ -8,11 +8,17 @@ struct HoverApplication: Equatable {
 
 final class HoverApplications {
     static let storageKey = "hoverApplications"
+    static let exclusionsKey = "hoverApplicationExclusions"
     private let defaults: UserDefaults
+    private var excludedBundleIdentifiers: Set<String>
     private(set) var applications: [HoverApplication]
+    private(set) var hasLegacyEmptySelection = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        excludedBundleIdentifiers = Set((defaults.array(forKey: Self.exclusionsKey) ?? []).compactMap {
+            ($0 as? String).flatMap(Self.validIdentifier)
+        })
         guard let stored = defaults.object(forKey: Self.storageKey) else {
             applications = [HoverApplication(bundleIdentifier: "com.googlecode.iterm2", displayName: "iTerm2", enabled: true)]
             return
@@ -28,6 +34,7 @@ final class HoverApplications {
                   seen.insert(identifier).inserted else { return nil }
             return HoverApplication(bundleIdentifier: identifier, displayName: Self.name(name, fallback: identifier), enabled: enabled)
         }
+        hasLegacyEmptySelection = applications.isEmpty && defaults.object(forKey: Self.exclusionsKey) == nil
     }
 
     var enabledBundleIdentifiers: Set<String> {
@@ -37,6 +44,7 @@ final class HoverApplications {
     @discardableResult
     func add(bundleIdentifier: String, displayName: String) -> Bool {
         guard let identifier = Self.validIdentifier(bundleIdentifier) else { return false }
+        excludedBundleIdentifiers.remove(identifier)
         let name = Self.name(displayName, fallback: identifier)
         if let index = applications.firstIndex(where: { $0.bundleIdentifier == identifier }) {
             applications[index].displayName = name
@@ -55,14 +63,33 @@ final class HoverApplications {
     }
 
     func remove(bundleIdentifier: String) {
-        applications.removeAll { $0.bundleIdentifier == bundleIdentifier }
+        guard let identifier = Self.validIdentifier(bundleIdentifier) else { return }
+        excludedBundleIdentifiers.insert(identifier)
+        applications.removeAll { $0.bundleIdentifier == identifier }
         save()
+    }
+
+    @discardableResult
+    func discover(_ candidates: [HoverApplication]) -> Bool {
+        var known = Set(applications.map(\.bundleIdentifier))
+        var changed = false
+        for candidate in candidates {
+            guard let identifier = Self.validIdentifier(candidate.bundleIdentifier),
+                  !excludedBundleIdentifiers.contains(identifier), known.insert(identifier).inserted else { continue }
+            applications.append(HoverApplication(bundleIdentifier: identifier,
+                displayName: Self.name(candidate.displayName, fallback: identifier), enabled: true))
+            changed = true
+        }
+        if changed { save() }
+        return changed
     }
 
     private func save() {
         defaults.set(applications.map { app -> [String: Any] in
             ["bundleIdentifier": app.bundleIdentifier, "displayName": app.displayName, "enabled": app.enabled]
         }, forKey: Self.storageKey)
+        defaults.set(excludedBundleIdentifiers.sorted(), forKey: Self.exclusionsKey)
+        hasLegacyEmptySelection = false
     }
 
     private static func validIdentifier(_ value: String) -> String? {
