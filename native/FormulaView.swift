@@ -47,7 +47,9 @@ final class FormulaView: NSView {
         math.fontSize = 14
         math.font?.fallbackFont = CTFontCreateWithName(NSFont.systemFont(ofSize: 14).fontName as CFString, 14, nil)
         math.labelMode = parsed.display || boxed.count > 0 ? .display : .text
-        math.preferredMaxLayoutWidth = 0
+        // Zero measures without wrapping, but SwiftMath draws using the view's
+        // width. Keep both passes unbounded; scale the complete formula below.
+        math.preferredMaxLayoutWidth = .greatestFiniteMagnitude
         renderedBody = Self.normalizedRowSpacing(boxed.body)
         math.latex = renderedBody
         error = math.error

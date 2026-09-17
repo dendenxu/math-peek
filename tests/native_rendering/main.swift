@@ -26,6 +26,8 @@ struct Sample {
     let maximum: NSSize
 }
 let standard = NSSize(width: 760, height: 460)
+let sigmoidBody = #"S(f_q,f_k)=\operatorname{sigmoid}(f_q^\top f_k)."#
+let sigmoidSource = "$$\n  " + sigmoidBody + "\n  $$"
 let aligned = "\\begin{aligned}a &= b+c \\\\ x &= \\sqrt{\\frac{1}{2}}\\end{aligned}"
 let matrix = "\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}"
 let long = (1...45).map { "\\frac{x_{\($0)}^2+1}{\($0)}" }.joined(separator: "+")
@@ -95,6 +97,9 @@ var samples = [
     Sample(name: "inline", source: "$e^{i\\pi}+1=0$", body: "e^{i\\pi}+1=0", maximum: standard),
     Sample(name: "inline-parentheses", source: "\\(x^2+y^2=1\\)", body: "x^2+y^2=1", maximum: standard),
     Sample(name: "fraction", source: "$$\\frac{1}{2}+\\sum_{i=1}^{n}i^2$$", body: "\\frac{1}{2}+\\sum_{i=1}^{n}i^2", maximum: standard),
+    Sample(name: "sigmoid-multiline-source", source: sigmoidSource, body: "\n  " + sigmoidBody + "\n  ", maximum: standard),
+    Sample(name: "sigmoid-single-line-source", source: "$$" + sigmoidBody + "$$", body: sigmoidBody, maximum: standard),
+    Sample(name: "sigmoid-narrow-panel", source: sigmoidSource, body: "\n  " + sigmoidBody + "\n  ", maximum: NSSize(width: 110, height: 80)),
     Sample(name: "multiline-aligned", source: "\\[" + aligned + "\\]", body: aligned, maximum: standard),
     Sample(name: "matrix", source: matrix, body: matrix, maximum: standard),
     Sample(name: "long-expression", source: "$$" + long + "$$", body: long, maximum: standard),
@@ -112,6 +117,11 @@ var samples = [
     Sample(name: "boxed-aligned-row-spacing", source: #"\boxed{\begin{aligned}a&=b\\[8pt]c&=d\end{aligned}}"#,
            body: #"\begin{aligned}a&=b\\c&=d\end{aligned}"#, maximum: standard),
 ]
+
+let sigmoidScalars = Array(sigmoidSource.unicodeScalars)
+check(sigmoidScalars.indices.filter { !sigmoidScalars[$0].properties.isWhitespace }.allSatisfy {
+    HoverMath.extract(text: sigmoidSource, offset: $0) == sigmoidSource
+}, "sigmoid/extracts-complete-formula-from-every-nonspace-character")
 
 let exactFormulas = [
     ("full-kalman-aligned", kalmanSource, kalmanSource.replacingOccurrences(of: #"\[8pt]"#, with: #"\\[8pt]"#)),
@@ -157,6 +167,17 @@ for sample in samples {
     let display = label.displayList
     check(display != nil && display!.width <= label.bounds.width + 1 &&
           display!.ascent + display!.descent <= label.bounds.height + 1, "\(sample.name)/drawn-content-fits")
+    if sample.name.hasPrefix("sigmoid-") {
+        // Drawing can trigger a second layout after intrinsic size measurement.
+        // Inspect that final display, including on a narrow, scaled panel.
+        if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: bitmap)
+        } else { check(false, "\(sample.name)/bitmap-render") }
+        let drawn = label.displayList
+        check(drawn != nil && abs(drawn!.width - content.width) < 0.01 &&
+              abs(drawn!.ascent + drawn!.descent - content.height) < 0.01,
+              "\(sample.name)/drawing-preserves-measured-single-line-layout")
+    }
     if sample.name.hasPrefix("full-kalman-aligned") {
         check(tableShapes(label.mathList) == [Array(repeating: 2, count: 7)], "\(sample.name)/all-seven-aligned-rows")
         check(!label.latex.contains("[8pt]"), "\(sample.name)/spacing-options-are-not-visible-math")
