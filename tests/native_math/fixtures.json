@@ -1,5 +1,35 @@
 [
   {
+    "name": "markdown-stripped-display-brackets",
+    "text": "Recall 和 p-value\n\n这里 p-value 定义为：\n\n[\npvalue_h =\n\\frac{\\sum_q\\sum_{k\\in pool_h} score[h,q,k]}\n{\\sum_q\\sum_{k\\in history} score[h,q,k]}\n]\n\n原 sparse mask 实际命中的集合称为 active pool。",
+    "offset": 66,
+    "expected": "\\[\npvalue_h =\n\\frac{\\sum_q\\sum_{k\\in pool_h} score[h,q,k]}\n{\\sum_q\\sum_{k\\in history} score[h,q,k]}\n\\]"
+  },
+  {
+    "name": "markdown-stripped-simple-display",
+    "text": "Equation:\n[\na + b = c\n]",
+    "offset": 14,
+    "expected": "\\[\na + b = c\n\\]"
+  },
+  {
+    "name": "ordinary-multiline-array-is-not-display-math",
+    "text": "values = [\n  1,\n  2\n]",
+    "offset": 16,
+    "expected": null
+  },
+  {
+    "name": "standalone-json-array-is-not-display-math",
+    "text": "[\n  \"a+b\",\n  \"c=d\"\n]",
+    "offset": 7,
+    "expected": null
+  },
+  {
+    "name": "standalone-brackets-around-prose-are-not-display-math",
+    "text": "[\nthis is prose + more prose\n]",
+    "offset": 8,
+    "expected": null
+  },
+  {
     "text": "\\[\n\\begin{aligned}\na &= b \\\\\n c &= \\frac{1}{2}\n\\end{aligned}\n\\]",
     "offset": 30,
     "expected": "\\[\n\\begin{aligned}\na &= b \\\\\n c &= \\frac{1}{2}\n\\end{aligned}\n\\]"

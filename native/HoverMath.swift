@@ -10,7 +10,8 @@ enum HoverMath {
         let cursor = pane?.offset ?? offset
         let delimited = expression(source, cursor, padding: pane != nil)
         guard let range = delimited ?? bare(source, cursor) else { return nil }
-        return repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
+        let repaired = repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
+        return normalizeMarkdownDisplay(repaired)
     }
 
     private typealias Scalars = [Unicode.Scalar]
@@ -386,6 +387,56 @@ enum HoverMath {
         return end
     }
 
+    private static func isolatedLineToken(_ text: Scalars, _ index: Int, _ token: Unicode.Scalar) -> Bool {
+        guard index >= 0, index < text.count, text[index] == token else { return false }
+        var start = index
+        while start > 0 && !newline(text[start - 1]) { start -= 1 }
+        var end = index + 1
+        while end < text.count && !newline(text[end]) { end += 1 }
+        return text[start..<index].allSatisfy { $0 == " " || $0 == "\t" } &&
+            text[(index + 1)..<end].allSatisfy { $0 == " " || $0 == "\t" || $0 == "\r" }
+    }
+
+    // Some Markdown renderers consume the backslashes in display delimiters,
+    // so `\[` and `\]` arrive through terminal accessibility as standalone
+    // `[` and `]` lines. Recognize only a math-shaped, multi-line block; this
+    // deliberately excludes ordinary prose and JSON/array formatting.
+    private static func markdownDisplayClosing(_ text: Scalars, _ start: Int, padding: Bool) -> Int? {
+        guard isolatedLineToken(text, start, "[") else { return nil }
+        let limit = min(text.count, start + 16384)
+        var position = start + 1
+        while position < limit {
+            if text[position] == "`" { return nil }
+            if text[position] == "]", isolatedLineToken(text, position, "]") {
+                let body = Array(text[(start + 1)..<position])
+                let source = string(body)
+                guard body.contains(where: { !$0.properties.isWhitespace }),
+                      body.reduce(0, { $0 + (newline($1) ? 1 : 0) }) < 80,
+                      !body.contains(where: { (0x2500...0x257F).contains($0.value) }),
+                      !source.contains(where: { "`\"';@".contains($0) }),
+                      braceBalance(source) == 0, !displayContainsProse(body, padding: padding),
+                      regex(#"[=+*/^_{}<>]"#, source).first != nil else { return nil }
+                let knownCommand = regex(#"\\([A-Za-z]+)"#, source).contains {
+                    commands.contains((source as NSString).substring(with: $0.range(at: 1)))
+                }
+                if !knownCommand {
+                    guard regex(#"[A-Za-z]{3,}|[^\x00-\x7f]"#, source).isEmpty,
+                          regex(#"\b(?:if|for|in|let|var|fn|def|return|echo|print|const)\b"#, source).isEmpty else { return nil }
+                }
+                return position
+            }
+            position += 1
+        }
+        return nil
+    }
+
+    private static func normalizeMarkdownDisplay(_ source: String) -> String {
+        let lines = source.components(separatedBy: "\n")
+        guard lines.count >= 3, lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) == "[",
+              lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) == "]" else { return source }
+        return "\\[\n" + lines.dropFirst().dropLast().joined(separator: "\n") + "\n\\]"
+    }
+
     private static func expression(_ text: Scalars, _ offset: Int, padding: Bool) -> Range<Int>? {
         var i = 0
         while i < text.count && i <= offset {
@@ -406,6 +457,12 @@ enum HoverMath {
                 if matches(text, ["$", "$"], at: i) { opening = ["$", "$"]; close = opening }
                 else if matches(text, ["\\", "["], at: i) { opening = ["\\", "["]; close = ["\\", "]"] }
                 else if matches(text, ["\\", "("], at: i) { opening = ["\\", "("]; close = ["\\", ")"] }
+                else if text[i] == "[", let end = markdownDisplayClosing(text, i, padding: padding) {
+                    let after = end + 1
+                    if i <= offset && offset < after { return i..<after }
+                    i = after
+                    continue
+                }
                 else if text[i] == "$", let after = acrossWrap(text, i + 1, step: 1, padding: padding),
                         !after.properties.isWhitespace {
                     let before: Unicode.Scalar? = i > 0 ? text[i - 1] : nil

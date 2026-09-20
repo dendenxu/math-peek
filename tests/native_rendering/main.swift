@@ -93,6 +93,13 @@ let matricesSource = #"""
 a_{t-1}
 $$
 """#
+let markdownStrippedDisplaySource = #"""
+[
+pvalue_h =
+\frac{\sum_q\sum_{k\in pool_h} score[h,q,k]}
+{\sum_q\sum_{k\in history} score[h,q,k]}
+]
+"""#
 var samples = [
     Sample(name: "inline", source: "$e^{i\\pi}+1=0$", body: "e^{i\\pi}+1=0", maximum: standard),
     Sample(name: "inline-parentheses", source: "\\(x^2+y^2=1\\)", body: "x^2+y^2=1", maximum: standard),
@@ -117,6 +124,27 @@ var samples = [
     Sample(name: "boxed-aligned-row-spacing", source: #"\boxed{\begin{aligned}a&=b\\[8pt]c&=d\end{aligned}}"#,
            body: #"\begin{aligned}a&=b\\c&=d\end{aligned}"#, maximum: standard),
 ]
+
+let markdownDisplayExpected = #"""
+\[
+pvalue_h =
+\frac{\sum_q\sum_{k\in pool_h} score[h,q,k]}
+{\sum_q\sum_{k\in history} score[h,q,k]}
+\]
+"""#
+let markdownDisplayScalars = Array(markdownStrippedDisplaySource.unicodeScalars)
+let markdownDisplayOffsets = markdownDisplayScalars.indices.filter {
+    !markdownDisplayScalars[$0].properties.isWhitespace
+}
+let markdownDisplayExtracted = markdownDisplayOffsets.map {
+    HoverMath.extract(text: markdownStrippedDisplaySource, offset: $0)
+}
+check(!markdownDisplayExtracted.isEmpty && markdownDisplayExtracted.allSatisfy { $0 == markdownDisplayExpected },
+      "markdown-stripped-display/extracts-complete-formula-from-every-nonspace-character")
+if let formula = markdownDisplayExtracted.first ?? nil {
+    let body = String(formula.dropFirst(2).dropLast(2))
+    samples.append(Sample(name: "markdown-stripped-display", source: formula, body: body, maximum: standard))
+}
 
 let sigmoidScalars = Array(sigmoidSource.unicodeScalars)
 check(sigmoidScalars.indices.filter { !sigmoidScalars[$0].properties.isWhitespace }.allSatisfy {
