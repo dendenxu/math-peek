@@ -49,5 +49,51 @@ for fixture in fixtures {
         }
     }
 }
+
+let splitPaneHeadingSource = #"""
+left│  反方向则是：
+left│
+left│  # [
+left│  A_{j\leftarrow i}
+left│
+left│  \operatorname{softmax}_i
+left│  \left(
+left│  \frac{
+left│  \langle R(p_j)q_j,\ R(p_i)k_i\rangle
+left│  }{\sqrt d}
+left│  \right)
+left│  ]
+left│  后文
+"""#
+let commandRange = splitPaneHeadingSource.range(of: #"\operatorname"#).map {
+    splitPaneHeadingSource[..<$0.lowerBound].unicodeScalars.count
+}
+checks += 1
+if let offset = commandRange, let result = HoverMath.extract(text: splitPaneHeadingSource, offset: offset),
+   result.hasPrefix("\\["), result.hasSuffix("\\]"),
+   result.contains(#"\operatorname{softmax}_i"#), !result.contains("# "), !result.contains("left│") {
+    // Complete iTerm2/tmux pane projection with Markdown heading artifacts.
+} else {
+    failures += 1
+    print("FAIL split-pane-markdown-heading-display: expected complete projected formula")
+}
+let splitPaneInlineSource = #"""
+left│  前文
+left│
+left│  例如，陀螺仪预测身体倾角为 (10.6^\circ)，加速度计估计为 (9^\circ)：
+left│
+left│  后文
+"""#
+let inlineRange = splitPaneInlineSource.range(of: #"10.6^\circ"#).map {
+    splitPaneInlineSource[..<$0.lowerBound].unicodeScalars.count
+}
+checks += 1
+if let offset = inlineRange,
+   HoverMath.extract(text: splitPaneInlineSource, offset: offset) == #"\(10.6^\circ\)"# {
+    // Inline recovery also survives iTerm2/tmux pane projection.
+} else {
+    failures += 1
+    print("FAIL split-pane-markdown-inline: expected projected inline formula")
+}
 print("Native hover parser: \(checks - failures)/\(checks) passed in \(Int(Date().timeIntervalSince(began) * 1000)) ms")
 exit(failures == 0 ? 0 : 1)

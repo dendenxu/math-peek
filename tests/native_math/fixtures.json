@@ -1,5 +1,23 @@
 [
   {
+    "name": "markdown-heading-prefixed-display",
+    "text": "反方向则是：\n\n  # [\nA_{j\\leftarrow i}\n\n\\operatorname{softmax}_i\n\\left(\n\\frac{\n\\langle R(p_j)q_j,\\ R(p_i)k_i\\rangle\n}{\\sqrt d}\n\\right)\n]",
+    "offset": 48,
+    "expected": "\\[\nA_{j\\leftarrow i}\n\n\\operatorname{softmax}_i\n\\left(\n\\frac{\n\\langle R(p_j)q_j,\\ R(p_i)k_i\\rangle\n}{\\sqrt d}\n\\right)\n\\]"
+  },
+  {
+    "name": "markdown-heading-prefix-inside-display",
+    "text": "# [\n\\theta\n\n# 0.98\\times10.6^\\circ\n+\n0.02\\times9^\\circ\n\n10.568^\\circ\n]",
+    "offset": 39,
+    "expected": "\\[\n\\theta\n\n0.98\\times10.6^\\circ\n+\n0.02\\times9^\\circ\n\n10.568^\\circ\n\\]"
+  },
+  {
+    "name": "ordinary-markdown-heading-with-bracket-is-not-math",
+    "text": "# [\nordinary heading words\n]",
+    "offset": 8,
+    "expected": null
+  },
+  {
     "name": "markdown-stripped-inline-parentheses-in-prose",
     "text": "参数 (c_{\\mathrm{ref}}) 这样的一句话。",
     "offsets": [3, 4, 8, 19],

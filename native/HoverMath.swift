@@ -35,7 +35,7 @@ enum HoverMath {
     })
     private static let commands = Set("""
     frac dfrac tfrac sqrt sum prod coprod int iint iiint oint lim limits nolimits
-    infty partial nabla cdot times div pm mp le leq ge geq ne neq approx equiv sim
+    infty partial nabla cdot times div pm mp le leq ge geq ne neq approx equiv sim circ
     simeq cong propto in notin subset subseteq supset supseteq cup cap setminus
     forall exists nexists neg land lor implies iff to mapsto rightarrow leftarrow
     leftrightarrow Rightarrow Leftarrow Leftrightarrow longrightarrow longleftarrow
@@ -52,7 +52,7 @@ enum HoverMath {
     big Big bigg Bigg bigl bigr Bigl Bigr biggl biggr Biggl Biggr langle rangle
     lvert rvert lVert rVert vert Vert lceil rceil lfloor rfloor ell hbar emptyset
     varnothing Re Im bmod pmod mod stackrel cancel bcancel xcancel boxed color
-    textcolor underbracket overbracket bracevert choose atop not accentset
+    textcolor underbracket overbracket bracevert choose atop not accentset quad qquad
     """.split(whereSeparator: { $0.isWhitespace }).map(String.init))
     private static let commandPrefixes: Set<String> = {
         Set(commands.flatMap { command in (1...command.count).map { String(command.prefix($0)) } })
@@ -398,14 +398,24 @@ enum HoverMath {
         return end
     }
 
-    private static func isolatedLineToken(_ text: Scalars, _ index: Int, _ token: Unicode.Scalar) -> Bool {
+    private static func isolatedLineToken(_ text: Scalars, _ index: Int, _ token: Unicode.Scalar,
+                                          allowHeadingPrefix: Bool = false) -> Bool {
         guard index >= 0, index < text.count, text[index] == token else { return false }
         var start = index
         while start > 0 && !newline(text[start - 1]) { start -= 1 }
         var end = index + 1
         while end < text.count && !newline(text[end]) { end += 1 }
-        return text[start..<index].allSatisfy { $0 == " " || $0 == "\t" } &&
+        let prefix = string(text[start..<index])
+        let validPrefix = prefix.allSatisfy { $0 == " " || $0 == "\t" } ||
+            allowHeadingPrefix && !regex(#"^[ \t]{0,3}#{1,6}[ \t]+$"#, prefix).isEmpty
+        return validPrefix &&
             text[(index + 1)..<end].allSatisfy { $0 == " " || $0 == "\t" || $0 == "\r" }
+    }
+
+    private static func stripMarkdownHeadingPrefixes(_ source: String) -> String {
+        source.components(separatedBy: "\n").map {
+            replace(#"^[ \t]{0,3}#{1,6}[ \t]+"#, $0, with: "")
+        }.joined(separator: "\n")
     }
 
     // Some Markdown renderers consume the backslashes in display delimiters,
@@ -413,19 +423,20 @@ enum HoverMath {
     // `[` and `]` lines. Recognize only a math-shaped, multi-line block; this
     // deliberately excludes ordinary prose and JSON/array formatting.
     private static func markdownDisplayClosing(_ text: Scalars, _ start: Int, padding: Bool) -> Int? {
-        guard isolatedLineToken(text, start, "[") else { return nil }
+        guard isolatedLineToken(text, start, "[", allowHeadingPrefix: true) else { return nil }
         let limit = min(text.count, start + 16384)
         var position = start + 1
         while position < limit {
             if text[position] == "`" { return nil }
             if text[position] == "]", isolatedLineToken(text, position, "]") {
                 let body = Array(text[(start + 1)..<position])
-                let source = string(body)
+                let source = stripMarkdownHeadingPrefixes(string(body))
+                let cleanedBody = Array(source.unicodeScalars)
                 guard body.contains(where: { !$0.properties.isWhitespace }),
                       body.reduce(0, { $0 + (newline($1) ? 1 : 0) }) < 80,
                       !body.contains(where: { (0x2500...0x257F).contains($0.value) }),
                       !source.contains(where: { "`\"';@".contains($0) }),
-                      braceBalance(source) == 0, !displayContainsProse(body, padding: padding),
+                      braceBalance(source) == 0, !displayContainsProse(cleanedBody, padding: padding),
                       regex(#"[=+*/^_{}<>]"#, source).first != nil else { return nil }
                 let knownCommand = regex(#"\\([A-Za-z]+)"#, source).contains {
                     commands.contains((source as NSString).substring(with: $0.range(at: 1)))
@@ -445,7 +456,8 @@ enum HoverMath {
         let lines = source.components(separatedBy: "\n")
         guard lines.count >= 3, lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) == "[",
               lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) == "]" else { return source }
-        return "\\[\n" + lines.dropFirst().dropLast().joined(separator: "\n") + "\n\\]"
+        let body = lines.dropFirst().dropLast().map(stripMarkdownHeadingPrefixes).joined(separator: "\n")
+        return "\\[\n" + body + "\n\\]"
     }
 
     // Markdown can likewise turn `\(x\)` into `(x)` in terminal output.
