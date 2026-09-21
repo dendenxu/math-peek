@@ -204,10 +204,13 @@ struct CmuxGrid {
             }
         }
         guard let first = ranges.first,
-              let formula = HoverMath.extract(text: text, offset: first.lowerBound),
-              let sourceRange = exactFormulaRange(formula, containing: first),
-              !hiddenRanges.contains(where: { $0.overlaps(sourceRange) }),
-              ranges.allSatisfy({ sourceRange.lowerBound <= $0.lowerBound && $0.upperBound <= sourceRange.upperBound }) else {
+              let extraction = HoverMath.match(text: text, offset: first.lowerBound),
+              let lower = extraction.sourceRanges.map(\.lowerBound).min(),
+              let upper = extraction.sourceRanges.map(\.upperBound).max(),
+              !hiddenRanges.contains(where: { hidden in extraction.sourceRanges.contains(where: hidden.overlaps) }),
+              ranges.allSatisfy({ cell in extraction.sourceRanges.contains {
+                  $0.lowerBound <= cell.lowerBound && cell.upperBound <= $0.upperBound
+              } }) else {
             return nil
         }
         // Union bounds are only a popup anchor. Every nonblank target is checked
@@ -216,7 +219,7 @@ struct CmuxGrid {
                             y: area.minY + CGFloat(possibleRows.lowerBound) * cellSize.height,
                             width: CGFloat(possibleColumns.count) * cellSize.width + slackX,
                             height: CGFloat(possibleRows.count) * cellSize.height + slackY)
-        return Hit(formula: formula, scalarRange: sourceRange, bounds: bounds)
+        return Hit(formula: extraction.formula, scalarRange: lower..<upper, bounds: bounds)
     }
 
     private func possibleCells(position: CGFloat, cellSize: CGFloat,
@@ -227,23 +230,6 @@ struct CmuxGrid {
         let last = Int(floor(position / cellSize))
         guard first >= 0, last < count, first <= last else { return nil }
         return first..<(last + 1)
-    }
-
-    private func exactFormulaRange(_ formula: String, containing cell: Range<Int>) -> Range<Int>? {
-        let needle = Array(formula.unicodeScalars)
-        guard !needle.isEmpty, needle.count <= 4_096, needle.count <= scalars.count else { return nil }
-        let lower = max(0, cell.upperBound - needle.count)
-        let upper = min(cell.lowerBound, scalars.count - needle.count)
-        guard lower <= upper else { return nil }
-        var match: Range<Int>?
-        for start in lower...upper where scalars[start] == needle[0] {
-            let range = start..<(start + needle.count)
-            if scalars[range].elementsEqual(needle) {
-                guard match == nil else { return nil }
-                match = range
-            }
-        }
-        return match
     }
 
     private static func validCharacter(_ scalars: [Unicode.Scalar]) -> Bool {

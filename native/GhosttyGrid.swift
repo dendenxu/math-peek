@@ -128,19 +128,9 @@ struct GhosttyGrid {
         guard let first = offsets.first else { return nil }
         let start = max(0, first - 16_384), end = min(scalars.count, first + 16_384)
         let context = String(String.UnicodeScalarView(scalars[start..<end]))
-        guard let formula = HoverMath.extract(text: context, offset: first - start) else { return nil }
-        let needle = Array(formula.unicodeScalars)
-        let lower = max(start, first - needle.count + 1), upper = min(first, end - needle.count)
-        guard lower <= upper else { return nil }
-        var matchingRange: Range<Int>?
-        for index in lower...upper where scalars[index] == needle.first {
-            let range = index..<(index + needle.count)
-            if scalars[range].elementsEqual(needle) {
-                guard matchingRange == nil else { return nil }
-                matchingRange = range
-            }
-        }
-        guard let range = matchingRange, offsets.allSatisfy(range.contains) else { return nil }
-        return formula
+        guard let extraction = HoverMath.match(text: context, offset: first - start) else { return nil }
+        let sourceRanges = extraction.sourceRanges.map { ($0.lowerBound + start)..<($0.upperBound + start) }
+        guard offsets.allSatisfy({ offset in sourceRanges.contains(where: { $0.contains(offset) }) }) else { return nil }
+        return extraction.formula
     }
 }

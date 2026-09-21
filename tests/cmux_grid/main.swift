@@ -57,6 +57,19 @@ check(!grid.sameViewport(as: decode(reply([span("answer: " + boxed.replacingOccu
       "same-sized output changes invalidate viewport")
 check(grid.hit(at: point(14), in: area, cellSize: cell)?.formula == boxed,
       "bare boxed formula inside prose is retained in full")
+let strippedInline = #"value: (c_{\mathrm{ref}})"#
+let strippedInlineGrid = decode(reply([span(strippedInline, width: strippedInline.count)]))!
+check(strippedInlineGrid.hit(at: point(12), in: area, cellSize: cell)?.formula == #"\(c_{\mathrm{ref}}\)"#,
+      "Markdown-stripped inline delimiters retain their original grid range")
+let strippedDisplayReply = reply([span("[", row: 0, width: 1),
+                                  span(#"x = \frac{1}{2}"#, row: 1, width: 15),
+                                  span("]", row: 2, width: 1)], rows: 3)
+let strippedDisplayGrid = decode(strippedDisplayReply, rows: 3)!
+let strippedDisplayHit = strippedDisplayGrid.hit(at: point(6, 1),
+    in: CGRect(x: 100, y: 200, width: 800, height: 60), cellSize: cell)
+check(strippedDisplayHit?.formula.hasPrefix("\\[") == true &&
+      strippedDisplayHit?.formula.hasSuffix("\\]") == true,
+      "Markdown-stripped display delimiters retain their original grid range")
 check(grid.hit(at: point(2), in: area, cellSize: cell) == nil, "prose is not formula")
 check(grid.hit(at: point(65), in: area, cellSize: cell) == nil, "unused cells are not formula")
 check(grid.hit(at: point(14, 1), in: area, cellSize: cell) == nil, "empty viewport row is not formula")

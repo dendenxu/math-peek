@@ -2,7 +2,16 @@ import Foundation
 
 /// Terminal math extraction using Unicode scalar offsets; no helper process.
 enum HoverMath {
+    struct Extraction {
+        let formula: String
+        let sourceRanges: [Range<Int>]
+    }
+
     static func extract(text: String, offset: Int) -> String? {
+        match(text: text, offset: offset)?.formula
+    }
+
+    static func match(text: String, offset: Int) -> Extraction? {
         let input = Array(text.unicodeScalars)
         guard offset >= 0, offset < input.count else { return nil }
         let pane = project(input, offset)
@@ -11,11 +20,13 @@ enum HoverMath {
         let delimited = expression(source, cursor, padding: pane != nil)
         guard let range = delimited ?? bare(source, cursor) else { return nil }
         let repaired = repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
-        return normalizeMarkdownDelimiters(repaired)
+        let sourceRanges = pane.map { originalRanges(for: range, offsets: $0.sourceOffsets) } ?? [range]
+        guard !sourceRanges.isEmpty else { return nil }
+        return Extraction(formula: normalizeMarkdownDelimiters(repaired), sourceRanges: sourceRanges)
     }
 
     private typealias Scalars = [Unicode.Scalar]
-    private struct Pane { let text: Scalars; let offset: Int }
+    private struct Pane { let text: Scalars; let offset: Int; let sourceOffsets: [Int?] }
     private struct Row { let start: Int; let end: Int }
     private struct Border: Equatable { let column: Int; let index: Int }
     private static let verticalBorders = Set((0x2500...0x257F).compactMap(Unicode.Scalar.init).filter {
@@ -583,6 +594,18 @@ enum HoverMath {
             scalar.properties.isEmojiPresentation { return 2 }
         return 1
     }
+    private static func originalRanges(for range: Range<Int>, offsets: [Int?]) -> [Range<Int>] {
+        var result: [Range<Int>] = []
+        for projected in range {
+            guard offsets.indices.contains(projected), let original = offsets[projected] else { continue }
+            if let last = result.last, last.upperBound == original {
+                result[result.count - 1] = last.lowerBound..<(original + 1)
+            } else {
+                result.append(original..<(original + 1))
+            }
+        }
+        return result
+    }
     private static func project(_ text: Scalars, _ offset: Int) -> Pane? {
         var rows: [Row] = []
         var start = 0
@@ -634,6 +657,7 @@ enum HoverMath {
         while last + 1 < rows.count && same(last + 1) { last += 1 }
         guard last - first + 1 >= 3 else { return nil }
         var projected: Scalars = []
+        var sourceOffsets: [Int?] = []
         var projectedOffset = 0
         for index in first...last {
             guard let rowLayout = layout(index) else { return nil }
@@ -641,8 +665,12 @@ enum HoverMath {
             let end = right.flatMap { c in rowLayout.first(where: { $0.column == c })?.index } ?? rows[index].end
             if index == cursorRow { projectedOffset = projected.count + offset - begin }
             projected.append(contentsOf: text[begin..<end])
-            if index < last { projected.append("\n") }
+            sourceOffsets.append(contentsOf: (begin..<end).map(Optional.some))
+            if index < last {
+                projected.append("\n")
+                sourceOffsets.append(nil)
+            }
         }
-        return Pane(text: projected, offset: projectedOffset)
+        return Pane(text: projected, offset: projectedOffset, sourceOffsets: sourceOffsets)
     }
 }

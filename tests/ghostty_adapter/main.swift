@@ -22,6 +22,13 @@ let source = "Header\nEuler: $e^{i\\pi}+1=0$\n\nBare: " + boxed + "\n"
 let grid = GhosttyGrid(text: source, columns: 80)
 check(hit(grid, row: 1, column: 10) == #"$e^{i\pi}+1=0$"#, "Euler hover")
 check(hit(grid, row: 3, column: 12) == boxed, "bare boxed hover")
+let strippedInline = GhosttyGrid(text: #"value: (c_{\mathrm{ref}})"#, columns: 80)
+check(hit(strippedInline, row: 0, column: 12) == #"\(c_{\mathrm{ref}}\)"#,
+      "Markdown-stripped inline delimiters retain their original grid range")
+let strippedDisplay = GhosttyGrid(text: "[\nx = \\frac{1}{2}\n]", columns: 80)
+let strippedDisplayFormula = hit(strippedDisplay, row: 1, column: 6)
+check(strippedDisplayFormula?.hasPrefix("\\[") == true && strippedDisplayFormula?.hasSuffix("\\]") == true,
+      "Markdown-stripped display delimiters retain their original grid range")
 check(hit(grid, row: 2, column: 12) == nil, "blank line does not borrow formula")
 check(hit(grid, row: 23, column: 12) == nil, "omitted blank tail")
 check(hit(grid, row: 3, column: 12, padding: CGSize(width: 2, height: 2)) == boxed, "small unknown padding agrees on formula")
