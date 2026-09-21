@@ -1,5 +1,71 @@
 [
   {
+    "name": "markdown-stripped-single-variable-indices",
+    "text": "视频位置 (i) 读取音频位置 (j) 的权重是：",
+    "offsets": [5, 6, 7],
+    "expected": "\\(i\\)"
+  },
+  {
+    "name": "markdown-stripped-second-single-variable-index",
+    "text": "视频位置 (i) 读取音频位置 (j) 的权重是：",
+    "offsets": [16, 17, 18],
+    "expected": "\\(j\\)"
+  },
+  {
+    "name": "function-call-single-variable-is-not-inline-math",
+    "text": "f(i)",
+    "offset": 2,
+    "expected": null
+  },
+  {
+    "name": "markdown-stripped-structured-subscript",
+    "text": "分别使用 (W_{Q,video})、(W_{Q,audio})。",
+    "offsets": [5, 10, 14],
+    "expected": "\\(W_{Q,video}\\)"
+  },
+  {
+    "name": "markdown-stripped-structured-subscript-second",
+    "text": "分别使用 (W_{Q,video})、(W_{Q,audio})。",
+    "offsets": [19, 25, 29],
+    "expected": "\\(W_{Q,audio}\\)"
+  },
+  {
+    "name": "markdown-stripped-single-subscript",
+    "text": "变量 (x_i) 在这里。",
+    "offset": 5,
+    "expected": "\\(x_i\\)"
+  },
+  {
+    "name": "markdown-display-prime-is-complete",
+    "text": "[\n  h_i' = h_i+\n  g^{attn}_{l,m_i,\\tau_i}\\odot\n  \\operatorname{Attention}(z)_i\n  ]",
+    "offsets": [0, 5, 26, 61, 81],
+    "expected": "\\[\n  h_i' = h_i+\n  g^{attn}_{l,m_i,\\tau_i}\\odot\n  \\operatorname{Attention}(z)_i\n\\]"
+  },
+  {
+    "name": "bare-prime-source-remains-conservative",
+    "text": "shell-like h_i' = value",
+    "offset": 12,
+    "expected": null
+  },
+  {
+    "name": "markdown-stripped-compact-superscript-subscript",
+    "text": "记作 (W^Q_l)，用于 query 投影。",
+    "offsets": [3, 4, 6, 8],
+    "expected": "\\(W^Q_l\\)"
+  },
+  {
+    "name": "ordinary-parenthesized-snake-case-is-not-math",
+    "text": "option (foo_bar) remains prose",
+    "offset": 11,
+    "expected": null
+  },
+  {
+    "name": "function-call-compact-scripts-are-not-inline-math",
+    "text": "lookup(W^Q_l)",
+    "offset": 9,
+    "expected": null
+  },
+  {
     "name": "markdown-heading-prefixed-display",
     "text": "反方向则是：\n\n  # [\nA_{j\\leftarrow i}\n\n\\operatorname{softmax}_i\n\\left(\n\\frac{\n\\langle R(p_j)q_j,\\ R(p_i)k_i\\rangle\n}{\\sqrt d}\n\\right)\n]",
     "offset": 48,

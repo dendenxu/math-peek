@@ -95,5 +95,38 @@ if let offset = inlineRange,
     failures += 1
     print("FAIL split-pane-markdown-inline: expected projected inline formula")
 }
+let compactScriptSource = "left│  记作 (W^Q_l)，用于 query 投影。\nleft│  后文"
+let compactScriptOffset = compactScriptSource.range(of: "W^Q_l").map {
+    compactScriptSource[..<$0.lowerBound].unicodeScalars.count
+}
+checks += 1
+if let offset = compactScriptOffset,
+   HoverMath.extract(text: compactScriptSource, offset: offset) == #"\(W^Q_l\)"# {
+    // Compact superscript/subscript recovery survives pane projection.
+} else {
+    failures += 1
+    print("FAIL split-pane-compact-scripts: expected projected inline formula")
+}
+let primeBlockSource = #"""
+left│  [
+left│    h_i' = h_i+
+left│    g^{attn}_{l,m_i,\tau_i}\odot
+left│    \operatorname{Attention}(z)_i
+left│  ]
+left│  后文
+"""#
+let primeBlockOffset = primeBlockSource.range(of: #"\operatorname{Attention}"#).map {
+    primeBlockSource[..<$0.lowerBound].unicodeScalars.count
+}
+checks += 1
+if let offset = primeBlockOffset, let formula = HoverMath.extract(text: primeBlockSource, offset: offset),
+   formula.hasPrefix("\\["), formula.hasSuffix("\\]"),
+   formula.contains("h_i' = h_i+"), formula.contains(#"g^{attn}_{l,m_i,\tau_i}\odot"#),
+   formula.contains(#"\operatorname{Attention}(z)_i"#) {
+    // TeX prime does not make a confirmed display block fall back to one line.
+} else {
+    failures += 1
+    print("FAIL split-pane-prime-display: expected all display rows")
+}
 print("Native hover parser: \(checks - failures)/\(checks) passed in \(Int(Date().timeIntervalSince(began) * 1000)) ms")
 exit(failures == 0 ? 0 : 1)

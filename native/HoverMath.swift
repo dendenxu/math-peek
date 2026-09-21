@@ -435,7 +435,7 @@ enum HoverMath {
                 guard body.contains(where: { !$0.properties.isWhitespace }),
                       body.reduce(0, { $0 + (newline($1) ? 1 : 0) }) < 80,
                       !body.contains(where: { (0x2500...0x257F).contains($0.value) }),
-                      !source.contains(where: { "`\"';@".contains($0) }),
+                      !source.contains(where: { "`\";@".contains($0) }),
                       braceBalance(source) == 0, !displayContainsProse(cleanedBody, padding: padding),
                       regex(#"[=+*/^_{}<>]"#, source).first != nil else { return nil }
                 let knownCommand = regex(#"\\([A-Za-z]+)"#, source).contains {
@@ -481,11 +481,14 @@ enum HoverMath {
                     depth -= 1
                     if depth == 0 {
                         let body = string(text[(start + 1)..<position])
-                        guard bareSource(body), braceBalance(body) == 0,
-                              regex(#"[=+*/^_{}<>]"#, body).first != nil,
-                              regex(#"\\([A-Za-z]+)"#, body).contains(where: {
-                                  commands.contains((body as NSString).substring(with: $0.range(at: 1)))
-                              }) else { return nil }
+                        let knownCommand = regex(#"\\([A-Za-z]+)"#, body).contains {
+                            commands.contains((body as NSString).substring(with: $0.range(at: 1)))
+                        }
+                        let compactScripts = !regex(
+                            #"^[A-Za-z](?:(?:\^|_)(?:[A-Za-z0-9]|\{[A-Za-z0-9,+*/.-]+\})){1,2}$"#, body).isEmpty
+                        let singleVariable = !regex(#"^[A-Za-z]$"#, body).isEmpty
+                        guard braceBalance(body) == 0,
+                              (knownCommand && bareSource(body) || compactScripts || singleVariable) else { return nil }
                         return position
                     }
                 }
