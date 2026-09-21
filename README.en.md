@@ -155,7 +155,9 @@ render-grid interface for arbitrary terminal screens.
 
 Hover recognizes `$...$`, `$$...$$`, `\(...\)`, `\[...\]`, and clear standalone
 raw TeX with known commands. It also recovers display formulas when Markdown terminal
-output renders standalone `\[` / `\]` delimiters as `[` / `]`. Multiline `aligned`, common matrices, and complete
+output renders standalone `\[` / `\]` delimiters as `[` / `]`, and conservatively
+recovers inline `\(...\)` rendered as ordinary parentheses when the body has explicit
+TeX commands and math structure. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
 A complete bare `\boxed{...}` also works inside a sentence without dollar delimiters;
 only the formula itself triggers hover. Code blocks, inline code, shell paths such

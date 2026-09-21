@@ -100,6 +100,7 @@ pvalue_h =
 {\sum_q\sum_{k\in history} score[h,q,k]}
 ]
 """#
+let markdownStrippedInlineSource = #"参数 (c_{\mathrm{ref}}) 这样的一句话。"#
 var samples = [
     Sample(name: "inline", source: "$e^{i\\pi}+1=0$", body: "e^{i\\pi}+1=0", maximum: standard),
     Sample(name: "inline-parentheses", source: "\\(x^2+y^2=1\\)", body: "x^2+y^2=1", maximum: standard),
@@ -124,6 +125,19 @@ var samples = [
     Sample(name: "boxed-aligned-row-spacing", source: #"\boxed{\begin{aligned}a&=b\\[8pt]c&=d\end{aligned}}"#,
            body: #"\begin{aligned}a&=b\\c&=d\end{aligned}"#, maximum: standard),
 ]
+
+let markdownInlineExpected = #"\(c_{\mathrm{ref}}\)"#
+let markdownInlineScalars = Array(markdownStrippedInlineSource.unicodeScalars)
+let markdownInlineOffsets = markdownInlineScalars.indices.filter { (3...20).contains($0) }
+let markdownInlineExtracted = markdownInlineOffsets.map {
+    HoverMath.extract(text: markdownStrippedInlineSource, offset: $0)
+}
+check(!markdownInlineExtracted.isEmpty && markdownInlineExtracted.allSatisfy { $0 == markdownInlineExpected },
+      "markdown-stripped-inline/extracts-complete-formula-from-every-character")
+if let formula = markdownInlineExtracted.first ?? nil {
+    samples.append(Sample(name: "markdown-stripped-inline", source: formula,
+                          body: #"c_{\mathrm{ref}}"#, maximum: standard))
+}
 
 let markdownDisplayExpected = #"""
 \[

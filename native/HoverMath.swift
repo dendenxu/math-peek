@@ -11,7 +11,7 @@ enum HoverMath {
         let delimited = expression(source, cursor, padding: pane != nil)
         guard let range = delimited ?? bare(source, cursor) else { return nil }
         let repaired = repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
-        return normalizeMarkdownDisplay(repaired)
+        return normalizeMarkdownDelimiters(repaired)
     }
 
     private typealias Scalars = [Unicode.Scalar]
@@ -437,6 +437,48 @@ enum HoverMath {
         return "\\[\n" + lines.dropFirst().dropLast().joined(separator: "\n") + "\n\\]"
     }
 
+    // Markdown can likewise turn `\(x\)` into `(x)` in terminal output.
+    // Parentheses are common prose and programming syntax, so only recover a
+    // balanced, math-shaped body containing a known TeX command.
+    private static func markdownInlineClosing(_ text: Scalars, _ start: Int) -> Int? {
+        guard text[start] == "(" else { return nil }
+        var lineStart = start
+        while lineStart > 0 && !newline(text[lineStart - 1]) { lineStart -= 1 }
+        let prefix = string(text[lineStart..<start])
+        guard regex(#"[A-Za-z0-9_)\]]$"#, prefix).isEmpty,
+              regex(#"\b(?:if|for|while|switch|catch|print|printf|return|func|fn|def)\s*$"#, prefix).isEmpty else { return nil }
+        var depth = 1
+        var position = start + 1
+        let limit = min(text.count, start + 2048)
+        while position < limit {
+            if text[position] == "`" || newline(text[position]) { return nil }
+            if !escaped(text, position) {
+                if text[position] == "(" { depth += 1 }
+                else if text[position] == ")" {
+                    depth -= 1
+                    if depth == 0 {
+                        let body = string(text[(start + 1)..<position])
+                        guard bareSource(body), braceBalance(body) == 0,
+                              regex(#"[=+*/^_{}<>]"#, body).first != nil,
+                              regex(#"\\([A-Za-z]+)"#, body).contains(where: {
+                                  commands.contains((body as NSString).substring(with: $0.range(at: 1)))
+                              }) else { return nil }
+                        return position
+                    }
+                }
+            }
+            position += 1
+        }
+        return nil
+    }
+
+    private static func normalizeMarkdownDelimiters(_ source: String) -> String {
+        let display = normalizeMarkdownDisplay(source)
+        if display != source { return display }
+        guard source.hasPrefix("("), source.hasSuffix(")"), source.count >= 3 else { return source }
+        return "\\(" + source.dropFirst().dropLast() + "\\)"
+    }
+
     private static func expression(_ text: Scalars, _ offset: Int, padding: Bool) -> Range<Int>? {
         var i = 0
         while i < text.count && i <= offset {
@@ -458,6 +500,12 @@ enum HoverMath {
                 else if matches(text, ["\\", "["], at: i) { opening = ["\\", "["]; close = ["\\", "]"] }
                 else if matches(text, ["\\", "("], at: i) { opening = ["\\", "("]; close = ["\\", ")"] }
                 else if text[i] == "[", let end = markdownDisplayClosing(text, i, padding: padding) {
+                    let after = end + 1
+                    if i <= offset && offset < after { return i..<after }
+                    i = after
+                    continue
+                }
+                else if text[i] == "(", let end = markdownInlineClosing(text, i) {
                     let after = end + 1
                     if i <= offset && offset < after { return i..<after }
                     i = after

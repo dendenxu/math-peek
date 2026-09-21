@@ -1,5 +1,41 @@
 [
   {
+    "name": "markdown-stripped-inline-parentheses-in-prose",
+    "text": "参数 (c_{\\mathrm{ref}}) 这样的一句话。",
+    "offsets": [3, 4, 8, 19],
+    "expected": "\\(c_{\\mathrm{ref}}\\)"
+  },
+  {
+    "name": "markdown-stripped-inline-parentheses-outside",
+    "text": "参数 (c_{\\mathrm{ref}}) 这样的一句话。",
+    "offsets": [0, 2, 21, 25],
+    "expected": null
+  },
+  {
+    "name": "ordinary-parenthetical-prose-is-not-inline-math",
+    "text": "Use (ordinary words) here.",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "name": "function-call-parentheses-are-not-inline-math",
+    "text": "print(c_{\\mathrm{ref}})",
+    "offset": 10,
+    "expected": null
+  },
+  {
+    "name": "spaced-control-parentheses-are-not-inline-math",
+    "text": "if (c_{\\mathrm{ref}}) { return; }",
+    "offset": 8,
+    "expected": null
+  },
+  {
+    "name": "inline-code-parentheses-are-not-inline-math",
+    "text": "`(c_{\\mathrm{ref}})`",
+    "offset": 8,
+    "expected": null
+  },
+  {
     "name": "markdown-stripped-display-brackets",
     "text": "Recall 和 p-value\n\n这里 p-value 定义为：\n\n[\npvalue_h =\n\\frac{\\sum_q\\sum_{k\\in pool_h} score[h,q,k]}\n{\\sum_q\\sum_{k\\in history} score[h,q,k]}\n]\n\n原 sparse mask 实际命中的集合称为 active pool。",
     "offset": 66,
