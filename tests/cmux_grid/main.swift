@@ -70,6 +70,22 @@ let strippedDisplayHit = strippedDisplayGrid.hit(at: point(6, 1),
 check(strippedDisplayHit?.formula.hasPrefix("\\[") == true &&
       strippedDisplayHit?.formula.hasSuffix("\\]") == true,
       "Markdown-stripped display delimiters retain their original grid range")
+for body in ["i", "x_i", "x^2", "W^Q_l", "W_{Q,video}", #"c_{\mathrm{ref}}"#,
+             #"10.6^\circ"#, "x+y", #"\frac{a}{b}"#] {
+    let source = "value: (" + body + ")"
+    let matrixGrid = decode(reply([span(source, width: source.count)]))!
+    check(matrixGrid.hit(at: point(CGFloat(8 + body.count / 2)), in: area, cellSize: cell)?.formula ==
+          "\\(" + body + "\\)", "stripped inline matrix: \(body)")
+}
+for body in ["x_i = y^2", #"\frac{a}{b}"#, #"h_i' = h_i+\n\operatorname{Attention}(z)_i"#] {
+    let lines = (["› ["] + body.components(separatedBy: "\n") + ["]"])
+    let spans = lines.enumerated().map { span($0.element, row: $0.offset, width: $0.element.count) }
+    let matrixGrid = decode(reply(spans, rows: lines.count), rows: lines.count)!
+    let matrixArea = CGRect(x: 100, y: 200, width: 800, height: CGFloat(lines.count) * 20)
+    check(matrixGrid.hit(at: point(CGFloat(max(1, lines[1].count / 2)), 1),
+                         in: matrixArea, cellSize: cell)?.formula.hasPrefix("\\[") == true,
+          "stripped display matrix: \(body)")
+}
 check(grid.hit(at: point(2), in: area, cellSize: cell) == nil, "prose is not formula")
 check(grid.hit(at: point(65), in: area, cellSize: cell) == nil, "unused cells are not formula")
 check(grid.hit(at: point(14, 1), in: area, cellSize: cell) == nil, "empty viewport row is not formula")

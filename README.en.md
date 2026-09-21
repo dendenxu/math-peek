@@ -156,7 +156,8 @@ render-grid interface for arbitrary terminal screens.
 Hover recognizes `$...$`, `$$...$$`, `\(...\)`, `\[...\]`, and clear standalone
 raw TeX with known commands. It also recovers display formulas when Markdown terminal
 output renders standalone `\[` / `\]` delimiters as `[` / `]`, and conservatively
-removes `# ` heading artifacts inside a confirmed math block. It conservatively recovers
+removes `# ` heading artifacts inside a confirmed math block. Codex TUI's `› [` user-input
+prefix is also supported. It conservatively recovers
 inline `\(...\)` rendered as ordinary parentheses when the body has explicit
 TeX commands, compact scripts, or a single math variable. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.

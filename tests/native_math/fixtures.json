@@ -1,5 +1,11 @@
 [
   {
+    "name": "codex-prompt-prefixed-display",
+    "text": "› [\n  96768=3\\text{ 个模态}\\times6\\text{ 组参数}\\times5376\n  ]",
+    "offsets": [2, 7, 29, 54],
+    "expected": "\\[\n  96768=3\\text{ 个模态}\\times6\\text{ 组参数}\\times5376\n\\]"
+  },
+  {
     "name": "markdown-stripped-single-variable-indices",
     "text": "视频位置 (i) 读取音频位置 (j) 的权重是：",
     "offsets": [5, 6, 7],

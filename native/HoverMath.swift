@@ -407,9 +407,19 @@ enum HoverMath {
         while end < text.count && !newline(text[end]) { end += 1 }
         let prefix = string(text[start..<index])
         let validPrefix = prefix.allSatisfy { $0 == " " || $0 == "\t" } ||
-            allowHeadingPrefix && !regex(#"^[ \t]{0,3}#{1,6}[ \t]+$"#, prefix).isEmpty
+            allowHeadingPrefix && !regex(#"^[ \t]{0,3}(?:#{1,6}|[>›•])[ \t]+$"#, prefix).isEmpty
         return validPrefix &&
             text[(index + 1)..<end].allSatisfy { $0 == " " || $0 == "\t" || $0 == "\r" }
+    }
+
+    private static func knownCommand(in source: String) -> Bool {
+        regex(#"\\([A-Za-z]+)"#, source).contains {
+            commands.contains((source as NSString).substring(with: $0.range(at: 1)))
+        }
+    }
+
+    private static func compactScriptSource(_ source: String) -> Bool {
+        !regex(#"^[A-Za-z](?:(?:\^|_)(?:[A-Za-z0-9]|\{[A-Za-z0-9,+*/.-]+\})){1,2}$"#, source).isEmpty
     }
 
     private static func stripMarkdownHeadingPrefixes(_ source: String) -> String {
@@ -436,12 +446,14 @@ enum HoverMath {
                       body.reduce(0, { $0 + (newline($1) ? 1 : 0) }) < 80,
                       !body.contains(where: { (0x2500...0x257F).contains($0.value) }),
                       !source.contains(where: { "`\";@".contains($0) }),
-                      braceBalance(source) == 0, !displayContainsProse(cleanedBody, padding: padding),
-                      regex(#"[=+*/^_{}<>]"#, source).first != nil else { return nil }
-                let knownCommand = regex(#"\\([A-Za-z]+)"#, source).contains {
-                    commands.contains((source as NSString).substring(with: $0.range(at: 1)))
-                }
-                if !knownCommand {
+                      braceBalance(source) == 0, !displayContainsProse(cleanedBody, padding: padding) else { return nil }
+                let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+                let command = knownCommand(in: source)
+                let simpleAtom = !regex(#"^(?:[A-Za-z]|[0-9]+(?:\.[0-9]+)?)$"#, trimmed).isEmpty
+                let compactScripts = compactScriptSource(trimmed)
+                let explicitStructure = regex(#"[=+*/^_{}<>]"#, source).first != nil
+                guard command || simpleAtom || compactScripts || explicitStructure else { return nil }
+                if !command && !simpleAtom && !compactScripts {
                     guard regex(#"[A-Za-z]{3,}|[^\x00-\x7f]"#, source).isEmpty,
                           regex(#"\b(?:if|for|in|let|var|fn|def|return|echo|print|const)\b"#, source).isEmpty else { return nil }
                 }
@@ -481,14 +493,20 @@ enum HoverMath {
                     depth -= 1
                     if depth == 0 {
                         let body = string(text[(start + 1)..<position])
-                        let knownCommand = regex(#"\\([A-Za-z]+)"#, body).contains {
-                            commands.contains((body as NSString).substring(with: $0.range(at: 1)))
-                        }
-                        let compactScripts = !regex(
-                            #"^[A-Za-z](?:(?:\^|_)(?:[A-Za-z0-9]|\{[A-Za-z0-9,+*/.-]+\})){1,2}$"#, body).isEmpty
+                        let command = knownCommand(in: body)
+                        let compactScripts = compactScriptSource(body)
                         let singleVariable = !regex(#"^[A-Za-z]$"#, body).isEmpty
+                        let scalarAtom = !regex(#"^(?:[0-9]+(?:\.[0-9]+)?|[\u0370-\u03ff])$"#, body).isEmpty
+                        let primeAtom = !regex(#"^[A-Za-z](?:')+$"#, body).isEmpty
+                        let functionNotation = !regex(
+                            #"^[A-Za-z](?:_[A-Za-z0-9]|_\{[A-Za-z0-9,]+\})?\([^()\s]+\)(?:[A-Za-z](?:_[A-Za-z0-9]|_\{[A-Za-z0-9,]+\})?)?$"#,
+                            body).isEmpty
+                        let explicitStructure = bareSource(body) &&
+                            regex(#"[=+*/^_{}<>]"#, body).first != nil
                         guard braceBalance(body) == 0,
-                              (knownCommand && bareSource(body) || compactScripts || singleVariable) else { return nil }
+                              (command && bareSource(body) || compactScripts ||
+                               singleVariable || scalarAtom || primeAtom || functionNotation ||
+                               explicitStructure) else { return nil }
                         return position
                     }
                 }

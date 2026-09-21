@@ -29,6 +29,20 @@ let strippedDisplay = GhosttyGrid(text: "[\nx = \\frac{1}{2}\n]", columns: 80)
 let strippedDisplayFormula = hit(strippedDisplay, row: 1, column: 6)
 check(strippedDisplayFormula?.hasPrefix("\\[") == true && strippedDisplayFormula?.hasSuffix("\\]") == true,
       "Markdown-stripped display delimiters retain their original grid range")
+for body in ["i", "x_i", "x^2", "W^Q_l", "W_{Q,video}", #"c_{\mathrm{ref}}"#,
+             #"10.6^\circ"#, "x+y", #"\frac{a}{b}"#] {
+    let source = "value: (" + body + ")"
+    let matrixGrid = GhosttyGrid(text: source, columns: 80)
+    check(hit(matrixGrid, row: 0, column: 8 + body.count / 2) == "\\(" + body + "\\)",
+          "stripped inline matrix: \(body)")
+}
+for body in ["x_i = y^2", #"\frac{a}{b}"#, #"h_i' = h_i+\n\operatorname{Attention}(z)_i"#] {
+    let source = "› [\n" + body + "\n]"
+    let rows = source.components(separatedBy: "\n").count
+    let matrixGrid = GhosttyGrid(text: source, columns: 80)
+    check(hit(matrixGrid, row: 1, column: max(1, body.components(separatedBy: "\n")[0].count / 2), rows: rows, total: rows)?.hasPrefix("\\[") == true,
+          "stripped display matrix: \(body)")
+}
 check(hit(grid, row: 2, column: 12) == nil, "blank line does not borrow formula")
 check(hit(grid, row: 23, column: 12) == nil, "omitted blank tail")
 check(hit(grid, row: 3, column: 12, padding: CGSize(width: 2, height: 2)) == boxed, "small unknown padding agrees on formula")
