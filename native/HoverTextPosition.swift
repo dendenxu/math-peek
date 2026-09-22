@@ -8,6 +8,25 @@ enum HoverTextPosition {
         return HoverMath.extract(text: text, offset: fallbackOffset)
     }
 
+    static func nearbyRange(text: NSString, location: Int, lineRadius: Int = 2, maximumLength: Int = 4096) -> NSRange? {
+        guard text.length > 0, (0..<text.length).contains(location), lineRadius >= 0, maximumLength > 0 else { return nil }
+        var result = text.lineRange(for: NSRange(location: location, length: 0))
+        for _ in 0..<lineRadius where result.location > 0 {
+            let previous = text.lineRange(for: NSRange(location: result.location - 1, length: 0))
+            result = NSUnionRange(previous, result)
+        }
+        for _ in 0..<lineRadius where NSMaxRange(result) < text.length {
+            let following = text.lineRange(for: NSRange(location: NSMaxRange(result), length: 0))
+            result = NSUnionRange(result, following)
+        }
+        guard result.length <= maximumLength else {
+            let lower = max(result.location, location - maximumLength / 2)
+            let upper = min(NSMaxRange(result), lower + maximumLength)
+            return NSRange(location: lower, length: upper - lower)
+        }
+        return result
+    }
+
     // Some accessible text views provide real character bounds but no point lookup.
     static func range(at point: CGPoint, text: NSString, visibleRange: NSRange?,
                       bounds: (NSRange) -> CGRect?) -> NSRange? {

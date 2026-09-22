@@ -64,6 +64,12 @@ check(HoverTextPosition.formula(direct: "direct", text: formulaText, directOffse
       "successful direct point mapping remains authoritative")
 check(HoverTextPosition.formula(direct: nil, text: "ordinary prose", directOffset: 2, fallbackOffset: 5) == nil,
       "fallback point mapping does not manufacture math")
+let nearbyText = (0..<12).map { "row\($0) " + String(repeating: "x", count: 300) }.joined(separator: "\n") as NSString
+let nearbyLocation = nearbyText.range(of: "row6").location
+let nearby = HoverTextPosition.nearbyRange(text: nearbyText, location: nearbyLocation)!
+check(nearby.length <= 4096 && nearby.contains(nearbyLocation), "fallback search stays within a focused character budget")
+check(!nearby.contains(nearbyText.range(of: "row0").location) && !nearby.contains(nearbyText.range(of: "row11").location),
+      "fallback search excludes distant terminal rows")
 
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

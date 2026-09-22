@@ -161,6 +161,7 @@ prefix is also supported. It conservatively recovers
 inline `\(...\)` rendered as ordinary parentheses when the body has explicit
 TeX commands, math atoms, function notation, or operator structure. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
+On iTerm2, failed direct point mapping retries only after the pointer settles and searches nearby rows instead of the full screen.
 A complete bare `\boxed{...}` also works inside a sentence without dollar delimiters;
 only the formula itself triggers hover. Code blocks, inline code, shell paths such
 as `$HOME/Applications/...`, and ambiguous currency are handled conservatively.

@@ -17,6 +17,7 @@ final class HoverController: NSObject {
     var reading = false
     var generation = 0
     var lastReadGeneration = -1
+    var lastPositionFallbackGeneration = -1
     var trackingPID: pid_t?
     var lastPopupLatencyMS = 0.0
     var formula = ""
@@ -246,8 +247,10 @@ final class HoverController: NSObject {
             lastMovement = Date()
             generation += 1
         }
+        let settled = Date().timeIntervalSince(lastMovement) >= 0.08
+        let needsPositionFallback = formula.isEmpty && settled && lastPositionFallbackGeneration != generation
         guard Date().timeIntervalSince(lastRead) > 0.016,
-              lastReadGeneration != generation || Date().timeIntervalSince(lastRead) > 0.8,
+              lastReadGeneration != generation || needsPositionFallback || Date().timeIntervalSince(lastRead) > 0.8,
               !reading, NSEvent.pressedMouseButtons == 0 else { return }
         lastRead = Date()
         lastReadGeneration = generation
@@ -255,8 +258,11 @@ final class HoverController: NSObject {
         let version = generation
         let mousePoint = CGEvent(source: nil)?.location ?? CGPoint(x: point.x, y: (NSScreen.screens.first?.frame.height ?? 0) - point.y)
         let processID = front.processIdentifier
+        let allowPositionFallback = needsPositionFallback
+        if allowPositionFallback { lastPositionFallbackGeneration = generation }
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.readFormula(at: mousePoint, pid: processID, generation: version)
+            let result = self.readFormula(at: mousePoint, pid: processID, generation: version,
+                                          allowPositionFallback: allowPositionFallback)
             DispatchQueue.main.async {
                 self.reading = false
                 guard self.enabled, AXIsProcessTrusted(), version == self.generation,
@@ -272,7 +278,8 @@ final class HoverController: NSObject {
         }
     }
 
-    func readFormula(at point: CGPoint, pid: pid_t, generation version: Int? = nil) -> String? {
+    func readFormula(at point: CGPoint, pid: pid_t, generation version: Int? = nil,
+                     allowPositionFallback: Bool = true) -> String? {
         func diagnose(_ stage: String) {
             if let version {
                 DispatchQueue.main.async {
@@ -361,17 +368,19 @@ final class HoverController: NSObject {
         let nsText = text as NSString
         guard range.location >= 0, range.location < nsText.length else { return nil }
         // Restrict processing to nearby content. Keep complete UTF-16 characters at the edges.
-        let start = max(0, range.location - 32768)
-        let end = min(nsText.length, range.location + 32768)
+        let start = max(0, range.location - 16_384)
+        let end = min(nsText.length, range.location + 16_384)
         let contextRange = nsText.rangeOfComposedCharacterSequences(for: NSRange(location: start, length: end - start))
         let context = nsText.substring(with: contextRange).replacingOccurrences(of: "\0", with: " ")
         let before = nsText.substring(with: NSRange(location: contextRange.location, length: range.location - contextRange.location))
         let offset = before.unicodeScalars.count
         let directFormula = HoverMath.extract(text: context, offset: offset)
         var fallbackOffset: Int?
-        if NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.googlecode.iterm2",
+        if allowPositionFallback,
+           NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.googlecode.iterm2",
            directFormula == nil,
-           let fallback = accessibilityRange(at: point, element: element, text: nsText),
+           let nearby = HoverTextPosition.nearbyRange(text: nsText, location: range.location),
+           let fallback = accessibilityRange(at: point, element: element, text: nsText, searchRange: nearby),
            fallback.location >= contextRange.location, fallback.location < NSMaxRange(contextRange) {
             let fallbackBefore = nsText.substring(with: NSRange(
                 location: contextRange.location, length: fallback.location - contextRange.location))
@@ -386,7 +395,8 @@ final class HoverController: NSObject {
         return formula
     }
 
-    private func accessibilityRange(at point: CGPoint, element: AXUIElement, text: NSString) -> NSRange? {
+    private func accessibilityRange(at point: CGPoint, element: AXUIElement, text: NSString,
+                                    searchRange: NSRange? = nil) -> NSRange? {
         var visibleValue: CFTypeRef?
         var visible: NSRange?
         if AXUIElementCopyAttributeValue(element, kAXVisibleCharacterRangeAttribute as CFString, &visibleValue) == .success,
@@ -396,7 +406,14 @@ final class HoverController: NSObject {
                 visible = NSRange(location: range.location, length: range.length)
             }
         }
-        return HoverTextPosition.range(at: point, text: text, visibleRange: visible) { range in
+        let available: NSRange?
+        if let searchRange, let visible {
+            let intersection = NSIntersectionRange(searchRange, visible)
+            available = intersection.length > 0 ? intersection : nil
+        } else {
+            available = searchRange ?? visible
+        }
+        return HoverTextPosition.range(at: point, text: text, visibleRange: available) { range in
             var requested = CFRange(location: range.location, length: range.length)
             guard let value = AXValueCreate(.cfRange, &requested) else { return nil }
             var result: CFTypeRef?
