@@ -21,7 +21,6 @@ func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
     guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
     return value
 }
-
 func demoTextArea(_ window: AXUIElement) -> (AXUIElement, NSString)? {
     guard attribute(window, kAXRoleAttribute) as? String == kAXWindowRole else { return nil }
     var queue = [(window, 0)]
@@ -170,7 +169,9 @@ if regression || fullFormulas {
             while first < last && whitespace(first) { first += 1 }
             while last > first && whitespace(last - 1) { last -= 1 }
             // A Markdown heading prefix is outside the formula's hover range.
-            if fullFormulas, content.substring(from: first).hasPrefix("# $$") { first += 2 }
+            if content.substring(from: first).hasPrefix("# $$") ||
+               content.substring(from: first).hasPrefix("# [") ||
+               content.substring(from: first).hasPrefix("› [") { first += 2 }
             if first < last {
                 row += 1
                 for (part, offset) in [("start", first), ("middle", (first + last - 1) / 2), ("end", last - 1)] {
@@ -214,7 +215,17 @@ if regression || fullFormulas {
     let delimited = sectionRows("delimited-velocity", "Delimited velocity:", "Raw velocity (tmux wraps this line):", velocity)
     let raw = sectionRows("raw-velocity", "Raw velocity (tmux wraps this line):", "One-column matrix (single slash rows):", velocity)
     let matrix = sectionRows("single-slash-matrix", "One-column matrix (single slash rows):", "Aligned (broken spacing command):", ["\\begin{bmatrix}", "v_x \\\\ v_y \\\\ v_z", "\\end{bmatrix}"])
-    aligned = sectionRows("broken-spacing-aligned", "Aligned (broken spacing command):", "END REGRESSION DEMO", ["\\begin{aligned}", "p_{\\mathrm{pred}}", "v_{\\mathrm{pred}}", "a_{\\mathrm{world}}", "\\\\[8pt]", "R(q)", "\\end{aligned}"])
+    aligned = sectionRows("broken-spacing-aligned", "Aligned (broken spacing command):", "Codex-prompt display (stripped delimiters):", ["\\begin{aligned}", "p_{\\mathrm{pred}}", "v_{\\mathrm{pred}}", "a_{\\mathrm{world}}", "\\\\[8pt]", "R(q)", "\\end{aligned}"])
+    let promptDisplay = sectionRows("codex-prompt-display", "Codex-prompt display (stripped delimiters):", "Markdown-heading display (stripped delimiters and heading artifacts):", ["\\theta_{t+\\Delta t}", "\\theta_{\\text{acc}}"])
+    let headingDisplay = sectionRows("markdown-heading-display", "Markdown-heading display (stripped delimiters and heading artifacts):", "Plain stripped display:", ["0.98\\times10.6^\\circ", "10.568^\\circ"])
+    let arrowDisplay = sectionRows("plain-stripped-display", "Plain stripped display:", "Stripped inline matrix:", ["a\\longrightarrow v\\longrightarrow p"])
+    let inlineBodies = ["i", "j", "42", "3.14", "α", "x'", "x_i", "x^2", "T^{-1}",
+        "W^Q_l", "W_{Q,video}", "W_{Q,audio}", #"c_{\mathrm{ref}}"#, #"10.6^\circ"#,
+        "x+y", "a/b", #"\frac{a}{b}"#, "f(x)", "R(p_i)q_i", #"\langle x,y\rangle"#]
+    let inlineRows = inlineBodies.map { body in
+        sample("stripped-inline-" + body, "Stripped inline matrix:", "(" + body + ")", [body])
+    }
+    extraRows += promptDisplay + headingDisplay + arrowDisplay + inlineRows
     inline = delimited[1]
     hardWrap = raw[1]
     chinese = matrix[1]

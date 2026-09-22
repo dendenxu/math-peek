@@ -159,7 +159,7 @@ output renders standalone `\[` / `\]` delimiters as `[` / `]`, and conservativel
 removes `# ` heading artifacts inside a confirmed math block. Codex TUI's `› [` user-input
 prefix is also supported. It conservatively recovers
 inline `\(...\)` rendered as ordinary parentheses when the body has explicit
-TeX commands, compact scripts, or a single math variable. Multiline `aligned`, common matrices, and complete
+TeX commands, math atoms, function notation, or operator structure. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
 A complete bare `\boxed{...}` also works inside a sentence without dollar delimiters;
 only the formula itself triggers hover. Code blocks, inline code, shell paths such

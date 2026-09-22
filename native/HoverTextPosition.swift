@@ -2,6 +2,12 @@ import Foundation
 import CoreGraphics
 
 enum HoverTextPosition {
+    static func formula(direct: String?, text: String, directOffset: Int, fallbackOffset: Int?) -> String? {
+        if let direct { return direct }
+        guard let fallbackOffset, fallbackOffset != directOffset else { return nil }
+        return HoverMath.extract(text: text, offset: fallbackOffset)
+    }
+
     // Some accessible text views provide real character bounds but no point lookup.
     static func range(at point: CGPoint, text: NSString, visibleRange: NSRange?,
                       bounds: (NSRange) -> CGRect?) -> NSRange? {

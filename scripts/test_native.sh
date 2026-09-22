@@ -50,7 +50,7 @@ xcrun swiftc native/DiagnosticWriter.swift tests/diagnostic_writer/main.swift -o
 "$bin_dir/diagnostic-writer-tests"
 xcrun swiftc native/TerminalCapture.swift tests/terminal_capture/main.swift -o "$bin_dir/terminal-capture-tests"
 "$bin_dir/terminal-capture-tests"
-xcrun swiftc native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
+xcrun swiftc native/HoverMath.swift native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
 "$bin_dir/hover-position-tests"
 xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift tests/cmux_grid/main.swift -o "$bin_dir/cmux-grid-tests"
 "$bin_dir/cmux-grid-tests"

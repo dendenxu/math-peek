@@ -53,5 +53,17 @@ check(HoverTextPosition.range(at: CGPoint(x: 5, y: 5), text: ambiguous, visibleR
     return range.length == 1 ? nil : CGRect(x: 0, y: 0, width: 10, height: 10)
 }) == nil && boundedQueries <= 64, "ambiguous geometry has a fixed request budget")
 
+let formulaText = "prose here\n[\na\\longrightarrow v\\longrightarrow p\n]"
+let direct = formulaText.range(of: "prose")!.lowerBound
+let fallback = formulaText.range(of: "longrightarrow")!.lowerBound
+let directOffset = formulaText[..<direct].unicodeScalars.count
+let fallbackOffset = formulaText[..<fallback].unicodeScalars.count
+check(HoverTextPosition.formula(direct: nil, text: formulaText, directOffset: directOffset, fallbackOffset: fallbackOffset)?.contains("longrightarrow") == true,
+      "failed direct point mapping retries the bounds-located character")
+check(HoverTextPosition.formula(direct: "direct", text: formulaText, directOffset: fallbackOffset, fallbackOffset: directOffset) == "direct",
+      "successful direct point mapping remains authoritative")
+check(HoverTextPosition.formula(direct: nil, text: "ordinary prose", directOffset: 2, fallbackOffset: 5) == nil,
+      "fallback point mapping does not manufacture math")
+
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

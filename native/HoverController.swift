@@ -367,7 +367,21 @@ final class HoverController: NSObject {
         let context = nsText.substring(with: contextRange).replacingOccurrences(of: "\0", with: " ")
         let before = nsText.substring(with: NSRange(location: contextRange.location, length: range.location - contextRange.location))
         let offset = before.unicodeScalars.count
-        guard let formula = HoverMath.extract(text: context, offset: offset) else { diagnose("no-complete-formula"); return nil }
+        let directFormula = HoverMath.extract(text: context, offset: offset)
+        var fallbackOffset: Int?
+        if NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.googlecode.iterm2",
+           directFormula == nil,
+           let fallback = accessibilityRange(at: point, element: element, text: nsText),
+           fallback.location >= contextRange.location, fallback.location < NSMaxRange(contextRange) {
+            let fallbackBefore = nsText.substring(with: NSRange(
+                location: contextRange.location, length: fallback.location - contextRange.location))
+            fallbackOffset = fallbackBefore.unicodeScalars.count
+        }
+        guard let formula = HoverTextPosition.formula(
+            direct: directFormula, text: context, directOffset: offset, fallbackOffset: fallbackOffset) else {
+            diagnose("no-complete-formula")
+            return nil
+        }
         diagnose("formula-found")
         return formula
     }
