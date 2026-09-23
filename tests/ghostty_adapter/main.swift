@@ -36,6 +36,15 @@ for body in ["i", "x_i", "x^2", "W^Q_l", "W_{Q,video}", #"c_{\mathrm{ref}}"#,
     check(hit(matrixGrid, row: 0, column: 8 + body.count / 2) == "\\(" + body + "\\)",
           "stripped inline matrix: \(body)")
 }
+for body in ["W_{Q,video}", #"c_{\mathrm{ref}}"#, "T^{-1}", #"\frac{a}{b}"#] {
+    let source = "(" + body + ")"
+    let braces = source.enumerated().filter { "{}".contains($0.element) }.map(\.offset)
+    let braceGrid = GhosttyGrid(text: source, columns: 80)
+    for column in braces {
+        check(hit(braceGrid, row: 0, column: column) == "\\(" + body + "\\)",
+              "brace cell maps to complete formula: \(body) column \(column)")
+    }
+}
 for body in ["x_i = y^2", #"\frac{a}{b}"#, #"h_i' = h_i+\n\operatorname{Attention}(z)_i"#] {
     let source = "› [\n" + body + "\n]"
     let rows = source.components(separatedBy: "\n").count

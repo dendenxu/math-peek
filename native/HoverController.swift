@@ -30,6 +30,9 @@ final class HoverController: NSObject {
     let cmuxSource = CmuxHoverSource()
     let ghosttySource = GhosttyHoverSource()
     private var cmuxInputMonitor: Any?
+    private var workspaceObserver: NSObjectProtocol?
+    private var activeApplication: NSRunningApplication?
+    private var activeBundleIdentifier: String?
     private var cmuxResumeAfter = Date.distantPast
     private var ghosttyResumeAfter = Date.distantPast
     private let diagnosticWriter = DiagnosticWriter(url: FileManager.default.homeDirectoryForCurrentUser
@@ -91,6 +94,15 @@ final class HoverController: NSObject {
         formulaView.autoresizingMask = []
         backdrop.addSubview(formulaView)
         panel.contentView = backdrop
+        activeApplication = NSWorkspace.shared.frontmostApplication
+        activeBundleIdentifier = activeApplication?.bundleIdentifier
+        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] notification in
+                guard let self else { return }
+                let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                self.activeApplication = application
+                self.activeBundleIdentifier = application?.bundleIdentifier
+            }
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in self?.tick() }
         cmuxInputMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.scrollWheel, .keyDown, .leftMouseDown]) { [weak self] event in
             guard let self, let identifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
@@ -110,6 +122,7 @@ final class HoverController: NSObject {
 
     deinit {
         if let cmuxInputMonitor { NSEvent.removeMonitor(cmuxInputMonitor) }
+        if let workspaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver) }
     }
 
     func requestPermission() {
@@ -223,9 +236,8 @@ final class HoverController: NSObject {
             lastTrust = trusted
             report?(trusted ? "悬停已开启：鼠标移到已添加终端的公式上即可预览。" : "悬停尚未生效：请在 macOS 辅助功能中允许 Math Peek。")
         }
-        guard enabled, trusted,
-              let front = NSWorkspace.shared.frontmostApplication,
-              allows(front) else {
+        guard enabled, trusted, let front = activeApplication,
+              let identifier = activeBundleIdentifier, allowedBundleIdentifiers.contains(identifier) else {
             diagnose(!enabled ? "disabled" : !trusted ? "permission-required" : "waiting-for-terminal")
             if trackingPID != nil {
                 trackingPID = nil
@@ -266,8 +278,9 @@ final class HoverController: NSObject {
             DispatchQueue.main.async {
                 self.reading = false
                 guard self.enabled, AXIsProcessTrusted(), version == self.generation,
-                      let current = NSWorkspace.shared.frontmostApplication,
-                      current.processIdentifier == processID, self.allows(current) else { return }
+                      let current = self.activeApplication, current.processIdentifier == processID,
+                      let identifier = self.activeBundleIdentifier,
+                      self.allowedBundleIdentifiers.contains(identifier) else { return }
                 guard let result else { self.hide(); return }
                 if self.formula != result || !self.panel.isVisible {
                     self.formula = result
@@ -284,8 +297,9 @@ final class HoverController: NSObject {
             if let version {
                 DispatchQueue.main.async {
                     guard version == self.generation, self.enabled,
-                          let front = NSWorkspace.shared.frontmostApplication,
-                          front.processIdentifier == pid, self.allows(front) else { return }
+                          let front = self.activeApplication, front.processIdentifier == pid,
+                          let identifier = self.activeBundleIdentifier,
+                          self.allowedBundleIdentifiers.contains(identifier) else { return }
                     self.diagnose(stage)
                 }
             } else {

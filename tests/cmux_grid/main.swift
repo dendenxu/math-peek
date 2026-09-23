@@ -77,6 +77,15 @@ for body in ["i", "x_i", "x^2", "W^Q_l", "W_{Q,video}", #"c_{\mathrm{ref}}"#,
     check(matrixGrid.hit(at: point(CGFloat(8 + body.count / 2)), in: area, cellSize: cell)?.formula ==
           "\\(" + body + "\\)", "stripped inline matrix: \(body)")
 }
+for body in ["W_{Q,video}", #"c_{\mathrm{ref}}"#, "T^{-1}", #"\frac{a}{b}"#] {
+    let source = "(" + body + ")"
+    let braces = source.enumerated().filter { "{}".contains($0.element) }.map(\.offset)
+    let braceGrid = decode(reply([span(source, width: source.count)]))!
+    for column in braces {
+        check(braceGrid.hit(at: point(CGFloat(column)), in: area, cellSize: cell)?.formula ==
+              "\\(" + body + "\\)", "brace cell maps to complete formula: \(body) column \(column)")
+    }
+}
 for body in ["x_i = y^2", #"\frac{a}{b}"#, #"h_i' = h_i+\n\operatorname{Attention}(z)_i"#] {
     let lines = (["› ["] + body.components(separatedBy: "\n") + ["]"])
     let spans = lines.enumerated().map { span($0.element, row: $0.offset, width: $0.element.count) }
