@@ -23,6 +23,7 @@ struct CmuxGrid {
     private let cells: [Range<Int>?]
     private let hiddenRanges: [Range<Int>]
     private let blankRows: [Bool]
+    private let formulaDocument: TerminalFormulaDocument
 
     private struct Span {
         let row: Int
@@ -166,11 +167,12 @@ struct CmuxGrid {
             if row + 1 < rows { scalars.append("\n") }
             guard scalars.count <= 131_072 else { return nil }
         }
+        let reconstructed = String(String.UnicodeScalarView(scalars))
         return CmuxGrid(generation: Generation(surfaceID: expectedID.uuidString,
                                                 epoch: epoch, revision: revision),
                         columns: columns, rows: rows,
-                        text: String(String.UnicodeScalarView(scalars)),
-                        scalars: scalars, cells: cells, hiddenRanges: hiddenRanges, blankRows: blankRows)
+                        text: reconstructed, scalars: scalars, cells: cells, hiddenRanges: hiddenRanges,
+                        blankRows: blankRows, formulaDocument: TerminalFormulaDocument(text: reconstructed))
     }
 
     /// Coordinates are AX screen points (top-left origin). The caller must also
@@ -204,7 +206,7 @@ struct CmuxGrid {
             }
         }
         guard let first = ranges.first,
-              let extraction = HoverMath.match(text: text, offset: first.lowerBound),
+              let extraction = formulaDocument.match(at: first.lowerBound),
               let lower = extraction.sourceRanges.map(\.lowerBound).min(),
               let upper = extraction.sourceRanges.map(\.upperBound).max(),
               !hiddenRanges.contains(where: { hidden in extraction.sourceRanges.contains(where: hidden.overlaps) }),

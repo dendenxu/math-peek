@@ -42,17 +42,23 @@ fi
 
 swift build -c release --product MathPeek
 bin_dir="$(swift build -c release --show-bin-path)"
-xcrun swiftc -O native/HoverMath.swift tests/native_math/main.swift -o "$bin_dir/native-math-tests"
+xcrun swiftc -O native/HoverMath.swift native/TerminalFormulaDocument.swift tests/native_math/main.swift -o "$bin_dir/native-math-tests"
 "$bin_dir/native-math-tests"
+xcrun swiftc -O native/HoverMath.swift native/TerminalFormulaDocument.swift tests/formula_document/main.swift -o "$bin_dir/formula-document-tests"
+"$bin_dir/formula-document-tests"
+xcrun swiftc -O native/HoverMath.swift native/TerminalFormulaDocument.swift tests/formula_performance/main.swift -o "$bin_dir/formula-performance-tests"
+"$bin_dir/formula-performance-tests"
+xcrun swiftc tests/terminal_fixture/main.swift -o "$bin_dir/terminal-fixture"
+"$bin_dir/terminal-fixture" --regression </dev/null | /usr/bin/grep -q "END REGRESSION DEMO"
 xcrun swiftc native/HoverApplications.swift tests/hover_applications/main.swift -o "$bin_dir/hover-applications-tests"
 "$bin_dir/hover-applications-tests"
 xcrun swiftc native/DiagnosticWriter.swift tests/diagnostic_writer/main.swift -o "$bin_dir/diagnostic-writer-tests"
 "$bin_dir/diagnostic-writer-tests"
 xcrun swiftc native/TerminalCapture.swift tests/terminal_capture/main.swift -o "$bin_dir/terminal-capture-tests"
 "$bin_dir/terminal-capture-tests"
-xcrun swiftc native/HoverMath.swift native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
+xcrun swiftc native/HoverMath.swift native/TerminalFormulaDocument.swift native/HoverTextPosition.swift tests/hover_position/main.swift -o "$bin_dir/hover-position-tests"
 "$bin_dir/hover-position-tests"
-xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift tests/cmux_grid/main.swift -o "$bin_dir/cmux-grid-tests"
+xcrun swiftc -O native/HoverMath.swift native/TerminalFormulaDocument.swift native/CmuxGrid.swift tests/cmux_grid/main.swift -o "$bin_dir/cmux-grid-tests"
 "$bin_dir/cmux-grid-tests"
 xcrun swiftc cli/CmuxConnection.swift tests/cli_cmux/main.swift -o "$bin_dir/cli-cmux-tests"
 "$bin_dir/cli-cmux-tests"
@@ -60,10 +66,10 @@ xcrun swiftc native/CmuxSocket.swift tests/cmux_socket/main.swift -o "$bin_dir/c
 "$bin_dir/cmux-socket-tests"
 xcrun swiftc native/CmuxSocket.swift native/CmuxConnectionStore.swift tests/cmux_connection_store/main.swift -o "$bin_dir/cmux-connection-store-tests"
 "$bin_dir/cmux-connection-store-tests"
-xcrun swiftc -O native/HoverMath.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift \
+xcrun swiftc -O native/HoverMath.swift native/TerminalFormulaDocument.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift \
     tests/cmux_geometry/main.swift -o "$bin_dir/cmux-geometry-tests"
 "$bin_dir/cmux-geometry-tests"
-xcrun swiftc -O shared/GhosttyProtocol.swift cli/GhosttyConnection.swift native/HoverMath.swift native/GhosttyGrid.swift \
+xcrun swiftc -O shared/GhosttyProtocol.swift cli/GhosttyConnection.swift native/HoverMath.swift native/TerminalFormulaDocument.swift native/GhosttyGrid.swift \
     tests/ghostty_adapter/main.swift -o "$bin_dir/ghostty-adapter-tests"
 "$bin_dir/ghostty-adapter-tests"
 math_objects=("$bin_dir"/SwiftMath.build/*.o)
@@ -87,18 +93,18 @@ fi
 
 # Keep the executables beside SwiftPM's font bundle so Bundle.module can find it.
 xcrun swiftc -O -I "$module_dir" \
-    native/HoverMath.swift native/FormulaView.swift tests/native_rendering/main.swift \
+    native/HoverMath.swift native/TerminalFormulaDocument.swift native/FormulaView.swift tests/native_rendering/main.swift \
     "${math_objects[@]}" -o "$bin_dir/native-rendering-tests"
 xcrun swiftc -O -I "$module_dir" \
-    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
+    native/HoverMath.swift native/TerminalFormulaDocument.swift native/FormulaView.swift native/HoverPresenter.swift native/DiagnosticWriter.swift native/HoverDiagnostics.swift \
     native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
-    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift \
+    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift native/TerminalHoverSource.swift \
     tests/hover_transitions/main.swift "${math_objects[@]}" \
     -o "$bin_dir/hover-transition-tests"
 xcrun swiftc -O -I "$module_dir" \
-    native/HoverMath.swift native/FormulaView.swift native/DiagnosticWriter.swift \
+    native/HoverMath.swift native/TerminalFormulaDocument.swift native/FormulaView.swift native/HoverPresenter.swift native/DiagnosticWriter.swift native/HoverDiagnostics.swift \
     native/HoverTextPosition.swift native/CmuxGrid.swift native/CmuxSocket.swift native/CmuxHoverSource.swift native/HoverController.swift \
-    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift \
+    shared/GhosttyProtocol.swift native/GhosttyGrid.swift native/GhosttyHoverSource.swift native/TerminalHoverSource.swift \
     tests/panel_layout/main.swift "${math_objects[@]}" \
     -o "$bin_dir/panel-layout-tests"
 

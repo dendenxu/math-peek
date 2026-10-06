@@ -36,7 +36,7 @@ brew upgrade --cask dendenxu/tap/math-peek
 ### 直接下载
 
 从 [GitHub Releases](https://github.com/dendenxu/math-peek/releases/latest) 下载
-`Math.Peek-1.1.1-universal.zip`，解压后把 `Math Peek.app` 拖到“应用程序”，然后打开。
+最新版 `Math.Peek-<版本>-universal.zip`，解压后把 `Math Peek.app` 拖到“应用程序”，然后打开。
 同一个应用支持 Apple Silicon 和 Intel Mac，要求 macOS 13 或更新版本。
 
 当前发布包已做本地签名，但**尚未经过 Apple 公证**。如果首次打开被 macOS 拦截，
@@ -156,12 +156,15 @@ math-peek connect ghostty
 此类公式块被终端 Markdown 留下 `# [` 或块内 `# ` 标题前缀时，也会在确认数学结构后清理并恢复。
 Codex TUI 将用户输入前缀显示为 `› [` 时也支持完整公式块识别。
 被吞掉行内分隔符时，按数学原子、函数记号、运算结构和 TeX 命令统一判断，而不是依赖单条公式白名单。
-在 iTerm2 中，直接坐标命中失败时仅在鼠标稳定后检查附近几行，避免全屏 bounds 搜索造成延迟。
+每份不可变终端快照只恢复一次窗格布局并建立完整公式块索引；鼠标移动只查询索引，
+不会在当前行附近重新猜公式。完整分隔块始终优先于裸 TeX，无法确认完整性时不显示残片。
+iTerm2 的直接坐标和停稳后的局部 bounds 回退查询同一个索引，不存在两套语义结果。
 前台应用通过系统切换通知缓存，不在 60 Hz 悬停循环中重复查询 LaunchServices。
 行内 `\(...\)` 被显示成普通括号时，含明确 TeX 命令、紧凑上下标或单个数学变量的内容也会保守恢复。
 完整的裸 `\boxed{...}` 也可以夹在普通句子中，不需要加 `$`；只在公式范围内触发。
 支持多行 `aligned`、常见矩阵和完整外层 `\boxed{...}`。
-浮窗按公式大小调整，过大时等比缩放；同一个公式内移动鼠标不会反复跳动。
+浮窗按公式大小调整，过大时等比缩放；同一快照中，同一个公式的任意字符都映射到同一公式块，
+移动鼠标不会改变内容或反复跳动。
 没有人为悬停等待或窗口动画。
 
 代码块、行内代码、`$HOME/Applications/...` 等 shell 路径和容易与金额混淆的文本会保守处理。
@@ -204,6 +207,8 @@ math-peek --follow
 状态日志和登录启动状态查询均在后台执行，避免磁盘或系统服务阻塞悬停。
 
 ## 开发与发布
+
+悬停的数据流、公式块优先级和确定性约束见[架构说明](docs/architecture.md)。
 
 ```sh
 scripts/test_native.sh

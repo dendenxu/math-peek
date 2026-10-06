@@ -28,7 +28,7 @@ Quit Math Peek before updating with `brew upgrade --cask dendenxu/tap/math-peek`
 
 ### Download
 
-Get `Math.Peek-1.1.1-universal.zip` from [Releases](https://github.com/dendenxu/math-peek/releases/latest),
+Get the latest `Math.Peek-<version>-universal.zip` from [Releases](https://github.com/dendenxu/math-peek/releases/latest),
 extract it, and move `Math Peek.app` to Applications. The universal app supports
 Apple Silicon and Intel Macs. Requires macOS 13+.
 
@@ -161,14 +161,16 @@ prefix is also supported. It conservatively recovers
 inline `\(...\)` rendered as ordinary parentheses when the body has explicit
 TeX commands, math atoms, function notation, or operator structure. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
-On iTerm2, failed direct point mapping retries only after the pointer settles and searches nearby rows instead of the full screen.
+Each immutable terminal snapshot reconstructs its pane layout and formula-block index once. Pointer movement only queries that index;
+it never reparses nearby rows. Complete delimited blocks outrank raw TeX, and uncertain fragments stay hidden.
+On iTerm2, direct coordinates and the settled local-bounds retry query the same index, so they cannot use different formula semantics.
 The active application is cached from workspace notifications rather than queried from LaunchServices on every 60 Hz hover tick.
 A complete bare `\boxed{...}` also works inside a sentence without dollar delimiters;
 only the formula itself triggers hover. Code blocks, inline code, shell paths such
 as `$HOME/Applications/...`, and ambiguous currency are handled conservatively.
 
-The popup scales to fit without animations. Moving within the same formula does
-not keep repositioning it. Open Reader supports longer Markdown with bundled KaTeX.
+The popup scales to fit without animations. Every character in one formula maps to one stable block within a snapshot,
+so moving inside it does not change or reposition the preview. Open Reader supports longer Markdown with bundled KaTeX.
 
 Control-Command-M reads the selected or visible text in an enabled terminal;
 in other apps it previews the clipboard. Reader capture and follow require
@@ -205,6 +207,8 @@ Diagnostics under `~/Library/Caches/Math Peek` contain status and timing, not
 terminal text. Disk writes and login-status polling run off the main thread.
 
 ## Development
+
+See the [architecture notes](docs/architecture.md) for the immutable hover pipeline, block precedence, and determinism rules.
 
 ```sh
 scripts/test_native.sh

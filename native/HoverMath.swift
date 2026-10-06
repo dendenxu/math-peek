@@ -2,9 +2,38 @@ import Foundation
 
 /// Terminal math extraction using Unicode scalar offsets; no helper process.
 enum HoverMath {
+    private static let compatibilityCache = FormulaDocumentCache()
+    enum Kind: Int, Comparable {
+        case bare = 0
+        case clippedDisplay = 1
+        case recovered = 2
+        case delimited = 3
+
+        static func < (lhs: Kind, rhs: Kind) -> Bool { lhs.rawValue < rhs.rawValue }
+    }
+
+    struct Block: Equatable {
+        let formula: String
+        let range: Range<Int>
+        let kind: Kind
+    }
+
+    struct Index {
+        fileprivate let blocks: [Block]
+
+        func block(containing offset: Int) -> Block? {
+            blocks.filter { $0.range.contains(offset) }.max { left, right in
+                if left.kind != right.kind { return left.kind < right.kind }
+                if left.range.count != right.range.count { return left.range.count < right.range.count }
+                return left.range.lowerBound > right.range.lowerBound
+            }
+        }
+    }
+
     struct Extraction {
         let formula: String
         let sourceRanges: [Range<Int>]
+        let kind: Kind
     }
 
     static func extract(text: String, offset: Int) -> String? {
@@ -12,27 +41,85 @@ enum HoverMath {
     }
 
     static func match(text: String, offset: Int) -> Extraction? {
-        let input = Array(text.unicodeScalars)
-        guard offset >= 0, offset < input.count else { return nil }
-        let pane = project(input, offset)
-        let source = pane?.text ?? input
-        let cursor = pane?.offset ?? offset
-        let delimited = expression(source, cursor, padding: pane != nil)
-        guard let range = delimited ?? bare(source, cursor) else { return nil }
-        let repaired = repairRows(repair(Array(source[range]), padding: pane != nil, continuationIndent: delimited == nil))
-        let sourceRanges = pane.map { originalRanges(for: range, offsets: $0.sourceOffsets) } ?? [range]
-        guard !sourceRanges.isEmpty else { return nil }
-        return Extraction(formula: normalizeMarkdownDelimiters(repaired), sourceRanges: sourceRanges)
+        compatibilityCache.match(text: text, at: offset)
+    }
+
+    /// Parse an immutable logical terminal document once. Pointer movement only
+    /// queries this index; it never changes formula boundaries or completeness.
+    static func makeIndex(text: String, panePadding: Bool,
+                          allowsClippedTop: Bool = true, allowsClippedBottom: Bool = true) -> Index {
+        let source = Array(text.unicodeScalars)
+        guard !source.isEmpty else { return Index(blocks: []) }
+        var blocks: [Block] = []
+        for candidate in delimitedBlocks(source, padding: panePadding) {
+            let repaired = repairRows(repair(Array(source[candidate.range]), padding: panePadding))
+            blocks.append(Block(formula: normalizeMarkdownDelimiters(repaired),
+                                range: candidate.range, kind: candidate.kind))
+        }
+        blocks.append(contentsOf: clippedDisplayBlocks(
+            source, padding: panePadding, existing: blocks,
+            allowsTop: allowsClippedTop, allowsBottom: allowsClippedBottom))
+        let unresolvedDisplayBoundary = hasUnresolvedDisplayBoundary(source, blocks: blocks)
+
+        // Bare TeX is deliberately last. Probe each physical row once, plus
+        // explicit boxed occurrences that may sit inside prose. Any overlap
+        // with a stronger block is discarded rather than exposed as a fragment.
+        var probes = Set<Int>()
+        var rowStart = 0
+        for index in 0...source.count where index == source.count || source[index] == "\n" {
+            let row = rowStart..<index
+            // Every accepted bare formula must ultimately contain a known TeX
+            // command. Skip ordinary terminal rows before running regex-heavy
+            // joining and classification; wrapped commands are still reached
+            // from the row that contains their initial backslash.
+            let commandSignal = row.contains { position in
+                source[position] == "\\" && !escaped(source, position) &&
+                    position + 1 < index && letter(source[position + 1])
+            }
+            if commandSignal, let first = row.first(where: { !source[$0].properties.isWhitespace }) { probes.insert(first) }
+            rowStart = index + 1
+        }
+        let boxed = Array("\\boxed".unicodeScalars)
+        if source.count >= boxed.count {
+            for index in 0...(source.count - boxed.count) where matches(source, boxed, at: index) { probes.insert(index) }
+        }
+        var bareRanges = Set<String>()
+        for probe in unresolvedDisplayBoundary ? [] : probes.sorted() {
+            guard let range = bare(source, probe) else { continue }
+            let repaired = repairRows(repair(Array(source[range]), padding: panePadding, continuationIndent: true))
+            let key = "\(range.lowerBound):\(range.upperBound):\(repaired)"
+            guard bareRanges.insert(key).inserted,
+                  !blocks.contains(where: { $0.kind > .bare && $0.range.overlaps(range) }) else { continue }
+            blocks.append(Block(formula: normalizeMarkdownDelimiters(repaired), range: range, kind: .bare))
+        }
+
+        // Exact duplicates can arise from repaired terminal rows. Stable source
+        // order plus explicit priority makes the index deterministic.
+        var seen = Set<String>()
+        blocks = blocks.filter { block in
+            seen.insert("\(block.kind.rawValue):\(block.range.lowerBound):\(block.range.upperBound):\(block.formula)").inserted
+        }.sorted { left, right in
+            if left.range.lowerBound != right.range.lowerBound { return left.range.lowerBound < right.range.lowerBound }
+            if left.kind != right.kind { return left.kind > right.kind }
+            return left.range.count > right.range.count
+        }
+        return Index(blocks: blocks)
+    }
+
+    private static func hasUnresolvedDisplayBoundary(_ text: Scalars, blocks: [Block]) -> Bool {
+        guard text.count >= 2 else { return false }
+        for index in 0..<(text.count - 1) where matches(text, ["$", "$"], at: index) && !escaped(text, index) {
+            var lineStart = index
+            while lineStart > 0 && !newline(text[lineStart - 1]) { lineStart -= 1 }
+            let prefix = string(text[lineStart..<index])
+            // Inline double-dollar math is handled by normal delimiter pairing.
+            guard prefix.allSatisfy({ $0 == " " || $0 == "\t" }) else { continue }
+            if !blocks.contains(where: { $0.kind > .bare && $0.range.contains(index) }) { return true }
+        }
+        return false
     }
 
     private typealias Scalars = [Unicode.Scalar]
-    private struct Pane { let text: Scalars; let offset: Int; let sourceOffsets: [Int?] }
-    private struct Row { let start: Int; let end: Int }
-    private struct Border: Equatable { let column: Int; let index: Int }
-    private static let verticalBorders = Set((0x2500...0x257F).compactMap(Unicode.Scalar.init).filter {
-        let name = $0.properties.name ?? ""
-        return name.contains("VERTICAL") || name.contains("UP") && name.contains("DOWN")
-    })
     private static let commands = Set("""
     frac dfrac tfrac sqrt sum prod coprod int iint iiint oint lim limits nolimits
     infty partial nabla cdot times div pm mp le leq ge geq ne neq approx equiv sim circ
@@ -129,7 +216,7 @@ enum HoverMath {
     }
 
     private static func bareSource(_ candidate: String) -> Bool {
-        guard !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, candidate.unicodeScalars.count <= 2048,
+        guard !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, candidate.unicodeScalars.count <= 16_384,
               !candidate.contains(where: { "`$\"';@#".contains($0) }),
               !candidate.unicodeScalars.contains(where: { (0x2500...0x257F).contains($0.value) }) else { return false }
         let scalars = Array(candidate.unicodeScalars)
@@ -168,17 +255,19 @@ enum HoverMath {
         var start = offset, end = offset
         while start > 0 && text[start - 1] != "\n" { start -= 1 }
         while end < text.count && text[end] != "\n" { end += 1 }
-        for _ in 0..<3 {
+        for _ in 0..<80 {
             guard start > 0 else { break }
             var previous = start - 1
             while previous > 0 && text[previous - 1] != "\n" { previous -= 1 }
+            guard end - previous <= 16_384 else { break }
             guard bareJoin(string(text[previous..<(start - 1)]), string(text[start..<end])) else { break }
             start = previous
         }
-        for _ in 0..<3 {
+        for _ in 0..<80 {
             guard end < text.count else { break }
             var following = end + 1
             while following < text.count && text[following] != "\n" { following += 1 }
+            guard following - start <= 16_384 else { break }
             guard bareJoin(string(text[start..<end]), string(text[(end + 1)..<following])) else { break }
             end = following
         }
@@ -523,54 +612,128 @@ enum HoverMath {
         return "\\(" + source.dropFirst().dropLast() + "\\)"
     }
 
-    private static func expression(_ text: Scalars, _ offset: Int, padding: Bool) -> Range<Int>? {
-        var i = 0
-        while i < text.count && i <= offset {
-            if (i == 0 || text[i - 1] == "\n"), let end = skipFence(text, i) { i = end; continue }
-            if text[i] == "`", !escaped(text, i), let end = skipCode(text, i) { i = end; continue }
-            if text[i] == "$", !escaped(text, i), let end = shellVariableEnd(text, i) {
-                // A variable or path prefix is also legal TeX. Keep complete
-                // math such as $P/R + Q$ before skipping shell expansions.
-                let closingDollar = closing(text, opening: ["$"], closing: ["$"], start: i, padding: padding)
-                let crossesQuotedArguments = closingDollar.map {
-                    !regex(#"(["'])\s+\1$"#, string(text[(i + 1)..<$0])).isEmpty
-                } ?? false
-                if closingDollar == nil || closingDollar == end || crossesQuotedArguments { i = end; continue }
+    private static func delimitedBlocks(_ text: Scalars, padding: Bool) -> [(range: Range<Int>, kind: Kind)] {
+        var result: [(Range<Int>, Kind)] = []
+        var index = 0
+        while index < text.count {
+            if (index == 0 || text[index - 1] == "\n"), let end = skipFence(text, index) { index = end; continue }
+            if text[index] == "`", !escaped(text, index), let end = skipCode(text, index) { index = end; continue }
+            if text[index] == "$", !escaped(text, index), let end = shellVariableEnd(text, index) {
+                let dollar = closing(text, opening: ["$"], closing: ["$"], start: index, padding: padding)
+                let quoted = dollar.map { !regex(#"(["'])\s+\1$"#, string(text[(index + 1)..<$0])).isEmpty } ?? false
+                if dollar == nil || dollar == end || quoted { index = end; continue }
             }
             var opening: Scalars = []
             var close: Scalars = []
-            if !escaped(text, i) {
-                if matches(text, ["$", "$"], at: i) { opening = ["$", "$"]; close = opening }
-                else if matches(text, ["\\", "["], at: i) { opening = ["\\", "["]; close = ["\\", "]"] }
-                else if matches(text, ["\\", "("], at: i) { opening = ["\\", "("]; close = ["\\", ")"] }
-                else if text[i] == "[", let end = markdownDisplayClosing(text, i, padding: padding) {
+            if !escaped(text, index) {
+                if matches(text, ["$", "$"], at: index) { opening = ["$", "$"]; close = opening }
+                else if matches(text, ["\\", "["], at: index) { opening = ["\\", "["]; close = ["\\", "]"] }
+                else if matches(text, ["\\", "("], at: index) { opening = ["\\", "("]; close = ["\\", ")"] }
+                else if text[index] == "[", let end = markdownDisplayClosing(text, index, padding: padding) {
                     let after = end + 1
-                    if i <= offset && offset < after { return i..<after }
-                    i = after
-                    continue
+                    result.append((index..<after, .recovered)); index = after; continue
                 }
-                else if text[i] == "(", let end = markdownInlineClosing(text, i) {
+                else if text[index] == "(", let end = markdownInlineClosing(text, index) {
                     let after = end + 1
-                    if i <= offset && offset < after { return i..<after }
-                    i = after
-                    continue
+                    result.append((index..<after, .recovered)); index = after; continue
                 }
-                else if text[i] == "$", let after = acrossWrap(text, i + 1, step: 1, padding: padding),
+                else if text[index] == "$", let after = acrossWrap(text, index + 1, step: 1, padding: padding),
                         !after.properties.isWhitespace {
-                    let before: Unicode.Scalar? = i > 0 ? text[i - 1] : nil
+                    let before: Unicode.Scalar? = index > 0 ? text[index - 1] : nil
                     let word = before.map { letter($0) || (48...57).contains($0.value) || $0 == "_" } ?? false
                     if before != "$" && !word { opening = ["$"]; close = opening }
                 }
             }
             if !opening.isEmpty {
-                if let end = closing(text, opening: opening, closing: close, start: i, padding: padding) {
+                if let end = closing(text, opening: opening, closing: close, start: index, padding: padding) {
                     let after = end + close.count
-                    if i <= offset && offset < after { return i..<after }
-                    i = after
-                } else { i += opening.count }
-            } else { i += 1 }
+                    result.append((index..<after, .delimited)); index = after; continue
+                }
+                index += opening.count
+            } else { index += 1 }
         }
-        return nil
+        return result
+    }
+
+    /// Recover only a formula clipped by the top or bottom of a logical pane.
+    /// It must touch a document edge and an unmatched display delimiter; this
+    /// never creates a free-floating fragment in the middle of ordinary prose.
+    private static func clippedDisplayBlocks(_ text: Scalars, padding: Bool, existing: [Block],
+                                             allowsTop: Bool, allowsBottom: Bool) -> [Block] {
+        struct Line { let start: Int; let end: Int }
+        var lines: [Line] = []
+        var start = 0
+        for index in 0...text.count where index == text.count || text[index] == "\n" {
+            let end = index > start && text[index - 1] == "\r" ? index - 1 : index
+            lines.append(Line(start: start, end: end)); start = index + 1
+        }
+        guard !lines.isEmpty else { return [] }
+        func trimmed(_ line: Line) -> Range<Int> {
+            var lower = line.start, upper = line.end
+            while lower < upper && text[lower].properties.isWhitespace { lower += 1 }
+            while upper > lower && text[upper - 1].properties.isWhitespace { upper -= 1 }
+            return lower..<upper
+        }
+        func delimiter(_ line: Line) -> Range<Int>? {
+            let range = trimmed(line)
+            guard range.count >= 2, matches(text, ["$", "$"], at: range.lowerBound) else { return nil }
+            // Terminal copies and bug reports often append prose after the
+            // visible closing delimiter. The candidate ends before that prose.
+            return range.lowerBound..<(range.lowerBound + 2)
+        }
+        func strongBody(_ range: Range<Int>) -> String? {
+            guard !range.isEmpty, range.count <= 16_384 else { return nil }
+            let body = repairRows(repair(Array(text[range]), padding: padding, continuationIndent: true))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !body.isEmpty, braceBalance(body) == 0,
+                  !displayContainsProse(Array(body.unicodeScalars), padding: padding),
+                  knownCommand(in: body), regex(#"[=+*/^_{}<>]|\\(?:left|right|begin|end)"#, body).first != nil else { return nil }
+            return body
+        }
+        let tokens: [(line: Int, range: Range<Int>)] = lines.indices.compactMap { line in
+            delimiter(lines[line]).map { (line, $0) }
+        }
+        var result: [Block] = []
+        for (tokenIndex, token) in tokens.enumerated() {
+            guard !existing.contains(where: { $0.kind > .bare && $0.range.contains(token.range.lowerBound) }) else { continue }
+            let previousLine = tokenIndex > 0 ? tokens[tokenIndex - 1].line : nil
+            let nextLine = tokenIndex + 1 < tokens.count ? tokens[tokenIndex + 1].line : nil
+            var candidates: [Block] = []
+
+            // Treat this token as a closing delimiter. The visible body begins
+            // at the pane edge or immediately after the previous known token.
+            if previousLine != nil || allowsTop {
+                let lowerLine = (previousLine ?? -1) + 1
+                if lowerLine < token.line,
+                   let firstContent = (lowerLine..<token.line).first(where: { !trimmed(lines[$0]).isEmpty }) {
+                    let bodyRange = lines[firstContent].start..<lines[token.line].start
+                    if let body = strongBody(bodyRange) {
+                        candidates.append(Block(formula: "$$\n" + body + "\n$$",
+                                                range: lines[firstContent].start..<token.range.upperBound,
+                                                kind: .clippedDisplay))
+                    }
+                }
+            }
+
+            // Treat this token as an opening delimiter. The visible body ends
+            // at the next known token or the pane edge.
+            if nextLine != nil || allowsBottom {
+                let upperLine = nextLine ?? lines.count
+                if token.line + 1 < upperLine,
+                   let lastContent = (token.line + 1..<upperLine).reversed().first(where: { !trimmed(lines[$0]).isEmpty }) {
+                    let bodyRange = lines[token.line].end..<lines[lastContent].end
+                    if let body = strongBody(bodyRange) {
+                        candidates.append(Block(formula: "$$\n" + body + "\n$$",
+                                                range: token.range.lowerBound..<lines[lastContent].end,
+                                                kind: .clippedDisplay))
+                    }
+                }
+            }
+            // A delimiter that could plausibly open and close two different
+            // formulas is ambiguous; showing neither is safer than a wrong one.
+            if candidates.count == 1 { result.append(candidates[0]) }
+        }
+        return result
     }
 
     private static func repair(_ text: Scalars, padding: Bool, continuationIndent: Bool = false) -> String {
@@ -610,100 +773,4 @@ enum HoverMath {
         return string(output)
     }
 
-    private static func width(_ scalar: Unicode.Scalar) -> Int {
-        switch scalar.properties.generalCategory {
-        case .nonspacingMark, .spacingMark, .enclosingMark, .format: return 0
-        default: break
-        }
-        let v = scalar.value
-        // East Asian wide/full-width ranges and ordinary wide emoji. Ambiguous
-        // characters remain one cell, matching iTerm2's default setting.
-        if (0x1100...0x115F).contains(v) || v == 0x2329 || v == 0x232A ||
-            (0x2E80...0xA4CF).contains(v) && v != 0x303F ||
-            (0xAC00...0xD7A3).contains(v) || (0xF900...0xFAFF).contains(v) ||
-            (0xFE10...0xFE19).contains(v) || (0xFE30...0xFE6F).contains(v) ||
-            (0xFF01...0xFF60).contains(v) || (0xFFE0...0xFFE6).contains(v) ||
-            (0x1F300...0x1FAFF).contains(v) || (0x20000...0x3FFFD).contains(v) ||
-            scalar.properties.isEmojiPresentation { return 2 }
-        return 1
-    }
-    private static func originalRanges(for range: Range<Int>, offsets: [Int?]) -> [Range<Int>] {
-        var result: [Range<Int>] = []
-        for projected in range {
-            guard offsets.indices.contains(projected), let original = offsets[projected] else { continue }
-            if let last = result.last, last.upperBound == original {
-                result[result.count - 1] = last.lowerBound..<(original + 1)
-            } else {
-                result.append(original..<(original + 1))
-            }
-        }
-        return result
-    }
-    private static func project(_ text: Scalars, _ offset: Int) -> Pane? {
-        var rows: [Row] = []
-        var start = 0
-        var cursorRow: Int?
-        for i in 0...text.count where i == text.count || text[i] == "\n" {
-            let end = i > start && text[i - 1] == "\r" ? i - 1 : i
-            if start <= offset && offset < (i == text.count ? i : i + 1) { cursorRow = rows.count }
-            rows.append(Row(start: start, end: end))
-            start = i + 1
-        }
-        guard let cursorRow else { return nil }
-        var cache: [Int: [Border]] = [:]
-        var rejected = Set<Int>()
-        func layout(_ rowIndex: Int) -> [Border]? {
-            if let found = cache[rowIndex] { return found }
-            if rejected.contains(rowIndex) { return nil }
-            let row = rows[rowIndex]
-            var column = 0
-            var borders: [Border] = []
-            for i in row.start..<row.end {
-                let scalar = text[i], v = scalar.value
-                if scalar == "\t" || v == 0x200C || v == 0x200D || v == 0xFE0E || v == 0xFE0F ||
-                    (0x1F3FB...0x1F3FF).contains(v) || (0x1F1E6...0x1F1FF).contains(v) {
-                    rejected.insert(rowIndex)
-                    return nil
-                }
-                if verticalBorders.contains(scalar) { borders.append(Border(column: column, index: i)) }
-                column += width(scalar)
-            }
-            cache[rowIndex] = borders
-            return borders
-        }
-        guard let borders = layout(cursorRow), !borders.isEmpty,
-              offset < rows[cursorRow].end, !borders.contains(where: { $0.index == offset }) else { return nil }
-        let left = borders.last(where: { $0.index < offset })?.column
-        let right = borders.first(where: { $0.index > offset })?.column
-        func same(_ row: Int) -> Bool {
-            guard let candidate = layout(row),
-                  left == nil || candidate.contains(where: { $0.column == left }),
-                  right == nil || candidate.contains(where: { $0.column == right }) else { return false }
-            // Ignore other panes' log decorations, but never cross a new border
-            // inside the hovered pane.
-            return !candidate.contains { border in
-                (left == nil || border.column > left!) && (right == nil || border.column < right!)
-            }
-        }
-        var first = cursorRow, last = cursorRow
-        while first > 0 && same(first - 1) { first -= 1 }
-        while last + 1 < rows.count && same(last + 1) { last += 1 }
-        guard last - first + 1 >= 3 else { return nil }
-        var projected: Scalars = []
-        var sourceOffsets: [Int?] = []
-        var projectedOffset = 0
-        for index in first...last {
-            guard let rowLayout = layout(index) else { return nil }
-            let begin = left.flatMap { c in rowLayout.first(where: { $0.column == c })?.index }.map { $0 + 1 } ?? rows[index].start
-            let end = right.flatMap { c in rowLayout.first(where: { $0.column == c })?.index } ?? rows[index].end
-            if index == cursorRow { projectedOffset = projected.count + offset - begin }
-            projected.append(contentsOf: text[begin..<end])
-            sourceOffsets.append(contentsOf: (begin..<end).map(Optional.some))
-            if index < last {
-                projected.append("\n")
-                sourceOffsets.append(nil)
-            }
-        }
-        return Pane(text: projected, offset: projectedOffset, sourceOffsets: sourceOffsets)
-    }
 }

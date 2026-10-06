@@ -8,13 +8,10 @@ final class HiddenHoverPanel: HoverPanel {
 
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
-let hover = HoverController(resources: URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
-                            enabled: true, report: { _ in })
+let hidden = HiddenHoverPanel(contentRect: NSRect(x: 0, y: 0, width: 40, height: 34),
+                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+let hover = HoverController(enabled: true, presenter: HoverPresenter(panel: hidden), report: { _ in })
 hover.timer?.invalidate()
-let hidden = HiddenHoverPanel(contentRect: hover.panel.frame, styleMask: [.borderless, .nonactivatingPanel],
-                              backing: .buffered, defer: false)
-hidden.contentView = hover.panel.contentView
-hover.panel = hidden
 hover.anchor = NSScreen.main.map { NSPoint(x: $0.visibleFrame.midX, y: $0.visibleFrame.midY) } ?? .zero
 
 let tall = "$$\\begin{aligned}" + (1...12).map { "x_{\($0)} &= \\frac{\($0)}{2}" }.joined(separator: "\\\\") + "\\end{aligned}$$"

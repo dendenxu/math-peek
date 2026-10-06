@@ -2,12 +2,6 @@ import Foundation
 import CoreGraphics
 
 enum HoverTextPosition {
-    static func formula(direct: String?, text: String, directOffset: Int, fallbackOffset: Int?) -> String? {
-        if let direct { return direct }
-        guard let fallbackOffset, fallbackOffset != directOffset else { return nil }
-        return HoverMath.extract(text: text, offset: fallbackOffset)
-    }
-
     static func nearbyRange(text: NSString, location: Int, lineRadius: Int = 2, maximumLength: Int = 4096) -> NSRange? {
         guard text.length > 0, (0..<text.length).contains(location), lineRadius >= 0, maximumLength > 0 else { return nil }
         var result = text.lineRange(for: NSRange(location: location, length: 0))

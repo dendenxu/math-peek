@@ -51,7 +51,7 @@ final class FormulaView: NSView {
         // width. Keep both passes unbounded; scale the complete formula below.
         math.preferredMaxLayoutWidth = .greatestFiniteMagnitude
         renderedBody = Self.normalizedRowSpacing(boxed.body)
-        math.latex = renderedBody
+        math.latex = Self.normalizedNativeCompatibility(renderedBody)
         error = math.error
         var content = math.intrinsicContentSize
         var drawingScale: CGFloat = 1
@@ -192,6 +192,92 @@ final class FormulaView: NSView {
             else if character == "}" { depth = max(0, depth - 1) }
             result.append(character)
             index += 1
+        }
+        return result
+    }
+
+    /// SwiftMath deliberately implements a smaller command set than KaTeX.
+    /// Preserve standard two-argument stacking commands by expressing them as
+    /// a compact one-column math table, which SwiftMath renders natively. This
+    /// is structural rather than formula-specific and supports nested groups.
+    static func normalizedNativeCompatibility(_ source: String) -> String {
+        let characters = Array(source)
+
+        func bracedGroup(at opening: Int) -> (body: String, next: Int)? {
+            guard characters.indices.contains(opening), characters[opening] == "{" else { return nil }
+            var depth = 1
+            var index = opening + 1
+            let start = index
+            while index < characters.count {
+                if characters[index] == "\\", index + 1 < characters.count {
+                    index += 2
+                    continue
+                }
+                if characters[index] == "{" { depth += 1 }
+                else if characters[index] == "}" {
+                    depth -= 1
+                    if depth == 0 {
+                        return (String(characters[start..<index]), index + 1)
+                    }
+                }
+                index += 1
+            }
+            return nil
+        }
+
+        func skippingWhitespace(from start: Int) -> Int {
+            var index = start
+            while index < characters.count, characters[index].isWhitespace { index += 1 }
+            return index
+        }
+
+        var result = ""
+        var index = 0
+        while index < characters.count {
+            guard characters[index] == "\\" else {
+                result.append(characters[index])
+                index += 1
+                continue
+            }
+            if index + 1 < characters.count, characters[index + 1] == "\\" {
+                result += "\\\\"
+                index += 2
+                continue
+            }
+            var commandEnd = index + 1
+            while commandEnd < characters.count, characters[commandEnd].isASCII,
+                  characters[commandEnd].isLetter {
+                commandEnd += 1
+            }
+            let command = String(characters[(index + 1)..<commandEnd])
+            guard command == "underset" || command == "overset" || command == "stackrel" else {
+                let end = max(index + 1, commandEnd)
+                result += String(characters[index..<end])
+                index = end
+                continue
+            }
+            let firstOpening = skippingWhitespace(from: commandEnd)
+            guard let first = bracedGroup(at: firstOpening) else {
+                result += String(characters[index..<commandEnd])
+                index = commandEnd
+                continue
+            }
+            let secondOpening = skippingWhitespace(from: first.next)
+            guard let second = bracedGroup(at: secondOpening) else {
+                result += String(characters[index..<commandEnd])
+                index = commandEnd
+                continue
+            }
+            let annotation = normalizedNativeCompatibility(first.body)
+            let base = normalizedNativeCompatibility(second.body)
+            if command == "underset" {
+                result += "{\\begin{smallmatrix}\\textstyle " + base +
+                    "\\\\\\scriptstyle " + annotation + "\\end{smallmatrix}}"
+            } else {
+                result += "{\\begin{smallmatrix}\\scriptstyle " + annotation +
+                    "\\\\\\textstyle " + base + "\\end{smallmatrix}}"
+            }
+            index = second.next
         }
         return result
     }

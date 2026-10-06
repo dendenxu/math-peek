@@ -101,6 +101,18 @@ pvalue_h =
 ]
 """#
 let markdownStrippedInlineSource = #"参数 (c_{\mathrm{ref}}) 这样的一句话。"#
+let reportedUndersetBody = #"""
+  \left(
+  R(u),t(u)
+  \right)
+  =
+  \underset{R,t}{\arg\min}
+  \sum_v
+  w(u,v)
+  \left\|
+  RX_q(v)+t-X_i(v)
+  \right\|_2^2
+  """#
 var samples = [
     Sample(name: "inline", source: "$e^{i\\pi}+1=0$", body: "e^{i\\pi}+1=0", maximum: standard),
     Sample(name: "inline-parentheses", source: "\\(x^2+y^2=1\\)", body: "x^2+y^2=1", maximum: standard),
@@ -124,6 +136,8 @@ var samples = [
            body: #"\frac{x}{y}"#, maximum: NSSize(width: 50, height: 42)),
     Sample(name: "boxed-aligned-row-spacing", source: #"\boxed{\begin{aligned}a&=b\\[8pt]c&=d\end{aligned}}"#,
            body: #"\begin{aligned}a&=b\\c&=d\end{aligned}"#, maximum: standard),
+    Sample(name: "reported-underset-argmin", source: "$$\n" + reportedUndersetBody + "$$",
+           body: "\n" + reportedUndersetBody, maximum: standard),
 ]
 
 let markdownInlineExpected = #"\(c_{\mathrm{ref}}\)"#
@@ -201,7 +215,7 @@ for sample in samples {
     let elapsed = Date().timeIntervalSince(began) * 1000
     let content = label.intrinsicContentSize
     check(view.error == nil && label.error == nil && !label.isHidden && fallback.isHidden, "\(sample.name)/native-render")
-    check(label.latex == sample.body, "\(sample.name)/source")
+    check(view.renderedBody == sample.body, "\(sample.name)/source")
     check(size.width.isFinite && size.height.isFinite && size.width > 0 && size.height > 0 &&
           size.width <= sample.maximum.width && size.height <= sample.maximum.height, "\(sample.name)/panel-bounds")
     check(content.width <= label.bounds.width + 1 && content.height <= label.bounds.height + 1 &&
@@ -225,6 +239,10 @@ for sample in samples {
         check(!label.latex.contains("[8pt]"), "\(sample.name)/spacing-options-are-not-visible-math")
     } else if sample.name.hasPrefix("full-multi-matrix") {
         check(tableShapes(label.mathList) == [[1, 1], [2, 2], [1, 1], [1, 1]], "\(sample.name)/all-four-complete-matrices")
+    } else if sample.name == "reported-underset-argmin" {
+        check(label.latex.contains(#"\begin{smallmatrix}"#) && label.latex.contains(#"\arg\min"#) &&
+              label.latex.contains(#"RX_q(v)+t-X_i(v)"#),
+              "reported-underset-argmin/native-compatible-stack-preserves-complete-formula")
     }
     print("METRIC \(sample.name): \(String(format: "%.2f", elapsed))ms, panel=\(size), content=\(content), font=\(label.fontSize), error=\(String(describing: view.error))")
 }
@@ -261,6 +279,25 @@ for source in [#"\text{keep \\[8pt]}"#, #"\begin{aligned}\text{keep \\[8pt]}&=x\
 let validSpacing = #"\begin{aligned}a&=b\\[8pt]c&=d\\[-0.5em]e&=f\end{aligned}"#
 let defaultSpacing = #"\begin{aligned}a&=b\\c&=d\\e&=f\end{aligned}"#
 check(FormulaView.normalizedRowSpacing(validSpacing) == defaultSpacing, "valid-row-spacing-options-use-native-default-spacing")
+
+let stackCompatibility: [(String, String)] = [
+    (#"\underset{x_i}{f_{\theta}(x_i)}"#,
+     #"{\begin{smallmatrix}\textstyle f_{\theta}(x_i)\\\scriptstyle x_i\end{smallmatrix}}"#),
+    (#"\overset{a+b}{c_d}"#,
+     #"{\begin{smallmatrix}\scriptstyle a+b\\\textstyle c_d\end{smallmatrix}}"#),
+    (#"\stackrel{!}{=}"#,
+     #"{\begin{smallmatrix}\scriptstyle !\\\textstyle =\end{smallmatrix}}"#),
+    (#"\underset{x}{\overset{y}{z}}"#,
+     #"{\begin{smallmatrix}\textstyle {\begin{smallmatrix}\scriptstyle y\\\textstyle z\end{smallmatrix}}\\\scriptstyle x\end{smallmatrix}}"#),
+]
+for (source, expected) in stackCompatibility {
+    check(FormulaView.normalizedNativeCompatibility(source) == expected,
+          "native-compatibility-rewrites-balanced-standard-stack")
+}
+for source in [#"\underset{x}"#, #"\overset x {y}"#, #"\\underset{x}{y}"#] {
+    check(FormulaView.normalizedNativeCompatibility(source) == source,
+          "native-compatibility-preserves-malformed-or-row-separator-source")
+}
 
 let normal = "$e^{i\\pi}+1=0$"
 let first = view.render(normal, maxSize: standard)

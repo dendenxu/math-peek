@@ -8,6 +8,7 @@ struct GhosttyGrid {
     let columns: Int
     private let scalars: [Unicode.Scalar]
     private let cells: [[Int?]]
+    private let formulaDocument: TerminalFormulaDocument
     var physicalRows: Int { cells.count }
 
     init?(text: String, columns: Int) {
@@ -70,6 +71,7 @@ struct GhosttyGrid {
         }
         guard rows.count <= 32_768 else { return nil }
         self.text = text; self.columns = columns; self.scalars = scalars; cells = rows
+        formulaDocument = TerminalFormulaDocument(text: text)
     }
 
     private static func width(_ scalars: [Unicode.Scalar]) -> Int? {
@@ -126,11 +128,8 @@ struct GhosttyGrid {
             }
         }
         guard let first = offsets.first else { return nil }
-        let start = max(0, first - 16_384), end = min(scalars.count, first + 16_384)
-        let context = String(String.UnicodeScalarView(scalars[start..<end]))
-        guard let extraction = HoverMath.match(text: context, offset: first - start) else { return nil }
-        let sourceRanges = extraction.sourceRanges.map { ($0.lowerBound + start)..<($0.upperBound + start) }
-        guard offsets.allSatisfy({ offset in sourceRanges.contains(where: { $0.contains(offset) }) }) else { return nil }
+        guard let extraction = formulaDocument.match(at: first) else { return nil }
+        guard offsets.allSatisfy({ offset in extraction.sourceRanges.contains(where: { $0.contains(offset) }) }) else { return nil }
         return extraction.formula
     }
 }

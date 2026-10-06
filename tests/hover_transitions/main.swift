@@ -64,7 +64,7 @@ struct Sample {
 guard CommandLine.arguments.contains("--run") else {
     print("Ready. This harness does not move the mouse without --run.")
     print("Raise only the isolated \(marker) window, pause installed Math Peek hover, then run this binary with --run.")
-    print("Optional --regression selects tests/tmux_regression_demo.py; --occlusion tests a covered target separately.")
+    print("Optional --regression selects the native terminal fixture; --occlusion tests a covered target separately.")
     print("Use --bundle-id com.apple.Terminal for Terminal.app; --marker selects a custom isolated fixture marker.")
     exit(0)
 }
@@ -246,8 +246,7 @@ if regression || fullFormulas {
 }
 let primaryAligned = aligned[min(12, aligned.count - 1)]
 
-let resources = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let hover = HoverController(resources: resources, enabled: false, allowedBundleIdentifiers: [bundleID],
+let hover = HoverController(enabled: false, allowedBundleIdentifiers: [bundleID],
                             report: { print("controller: \($0)") })
 hover.timer?.invalidate()
 let originalPoint = CGEvent(source: nil)?.location ?? inline.point

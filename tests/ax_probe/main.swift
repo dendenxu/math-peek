@@ -82,9 +82,8 @@ if CommandLine.arguments.contains("--raise-demo") {
     RunLoop.main.run(until: Date().addingTimeInterval(0.2))
     print("Raised isolated demo window: \(firstRaise.rawValue), \(secondRaise.rawValue)")
 }
-let resources = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Applications/Math Peek.app/Contents/Resources")
-let hover = HoverController(resources: resources, report: { print("controller: \($0)") })
+let hover = HoverController(report: { print("controller: \($0)") })
 hover.timer?.invalidate()
 hover.enabled = false
 var passed = 0
