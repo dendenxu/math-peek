@@ -56,6 +56,7 @@ fi
 cat > "$release_dir/RELEASE_NOTES.md" <<NOTES
 Math Peek ${version}：独立的 macOS 菜单栏公式预览应用。
 
+- 修复 iTerm2 + tmux 中相邻窗格含中文时的公式悬停失效：按辅助功能文本的占位单元格计算分隔线位置，并保留原始字符映射。
 - 预编译 universal 应用，同时支持 Apple Silicon 和 Intel，要求 macOS 13 或更新版本。
 - 解压 ZIP，把 Math Peek.app 拖到“应用程序”，打开后允许辅助功能权限。
 - 安装器、CLI、终端取字和悬停渲染均为原生实现，不需要 Python，不使用 OCR。
@@ -93,6 +94,8 @@ $signing_note_zh
 ---
 
 Standalone native macOS formula preview, with universal binaries for Apple Silicon and Intel.
+Fixes formula hover in iTerm2/tmux when neighboring panes contain wide characters,
+by accounting for Accessibility continuation cells without changing source offsets.
 No Python or OCR. iTerm2 and Terminal use native Accessibility text and positions.
 cmux 0.64.24 uses its native viewport grid after running math-peek connect cmux in a local pane.
 Ghostty 1.3.1 supports experimental hover after math-peek connect ghostty in each local pane, without modifying Ghostty.

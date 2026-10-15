@@ -103,8 +103,11 @@ final class TerminalHoverSource {
         let directOffset = prefix.unicodeScalars.count
         let clippedTop = contextRange.location == 0
         let clippedBottom = NSMaxRange(contextRange) == nsText.length
+        let columnEncoding: TerminalFormulaDocument.ColumnEncoding =
+            bundle == "com.googlecode.iterm2" ? .paddedCells : .unicode
         let direct = documents.match(text: context, at: directOffset,
-                                     allowsClippedTop: clippedTop, allowsClippedBottom: clippedBottom)
+                                     allowsClippedTop: clippedTop, allowsClippedBottom: clippedBottom,
+                                     columnEncoding: columnEncoding)
 
         var fallback: HoverMath.Extraction?
         if direct == nil, allowPositionFallback, bundle == "com.googlecode.iterm2",
@@ -114,7 +117,8 @@ final class TerminalHoverSource {
             let before = nsText.substring(with: NSRange(
                 location: contextRange.location, length: located.location - contextRange.location))
             fallback = documents.match(text: context, at: before.unicodeScalars.count,
-                                       allowsClippedTop: clippedTop, allowsClippedBottom: clippedBottom)
+                                       allowsClippedTop: clippedTop, allowsClippedBottom: clippedBottom,
+                                       columnEncoding: columnEncoding)
         }
         guard let extraction = direct ?? fallback else {
             return Result(formula: nil, stage: "no-complete-formula")

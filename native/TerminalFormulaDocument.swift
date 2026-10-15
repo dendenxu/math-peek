@@ -4,6 +4,11 @@ import Foundation
 /// Pane reconstruction is performed once for the snapshot; formula lookup never
 /// reparses a different slice merely because the pointer moved to another row.
 final class TerminalFormulaDocument {
+    enum ColumnEncoding {
+        case unicode
+        case paddedCells
+    }
+
     private struct PaneKey: Hashable {
         let firstRow: Int
         let lastRow: Int
@@ -34,7 +39,8 @@ final class TerminalFormulaDocument {
     private var paneBySource: [Int: PaneKey] = [:]
     private let lock = NSLock()
 
-    init(text: String, allowsClippedTop: Bool = true, allowsClippedBottom: Bool = true) {
+    init(text: String, allowsClippedTop: Bool = true, allowsClippedBottom: Bool = true,
+         columnEncoding: ColumnEncoding = .unicode) {
         self.text = text
         self.allowsClippedTop = allowsClippedTop
         self.allowsClippedBottom = allowsClippedBottom
@@ -48,7 +54,8 @@ final class TerminalFormulaDocument {
             if start < position {
                 for index in start..<position { rowForScalar[index] = rowNumber }
             }
-            builtRows.append(Row(start: start, end: end, borders: Self.borders(in: scalars, range: start..<end)))
+            builtRows.append(Row(start: start, end: end,
+                                 borders: Self.borders(in: scalars, range: start..<end, encoding: columnEncoding)))
             start = position + 1
         }
         rows = builtRows
@@ -144,7 +151,8 @@ final class TerminalFormulaDocument {
         return (String(String.UnicodeScalarView(projected)), offsets)
     }
 
-    private static func borders(in text: [Unicode.Scalar], range: Range<Int>) -> [Int: Int]? {
+    private static func borders(in text: [Unicode.Scalar], range: Range<Int>,
+                                encoding: ColumnEncoding) -> [Int: Int]? {
         var result: [Int: Int] = [:]
         var column = 0
         for index in range {
@@ -157,7 +165,10 @@ final class TerminalFormulaDocument {
                name.contains("VERTICAL") || name.contains("UP") && name.contains("DOWN") {
                 result[column] = index
             }
-            column += cellWidth(scalar)
+            let width = cellWidth(scalar)
+            // iTerm's AX text includes the continuation cell after wide glyphs.
+            // Keep both source scalars, but do not count that cell twice.
+            column += encoding == .paddedCells ? min(width, 1) : width
         }
         return result
     }
@@ -200,20 +211,24 @@ final class FormulaDocumentCache {
     private var text: String?
     private var clippedTop = false
     private var clippedBottom = false
+    private var columnEncoding: TerminalFormulaDocument.ColumnEncoding = .unicode
     private var document: TerminalFormulaDocument?
 
     func match(text newText: String, at offset: Int,
-               allowsClippedTop: Bool = true, allowsClippedBottom: Bool = true) -> HoverMath.Extraction? {
+               allowsClippedTop: Bool = true, allowsClippedBottom: Bool = true,
+               columnEncoding newEncoding: TerminalFormulaDocument.ColumnEncoding = .unicode) -> HoverMath.Extraction? {
         lock.lock()
         let current: TerminalFormulaDocument
-        if text == newText, clippedTop == allowsClippedTop, clippedBottom == allowsClippedBottom, let document {
+        if text == newText, clippedTop == allowsClippedTop, clippedBottom == allowsClippedBottom,
+           columnEncoding == newEncoding, let document {
             current = document
         } else {
             current = TerminalFormulaDocument(text: newText, allowsClippedTop: allowsClippedTop,
-                                              allowsClippedBottom: allowsClippedBottom)
+                                              allowsClippedBottom: allowsClippedBottom, columnEncoding: newEncoding)
             text = newText
             clippedTop = allowsClippedTop
             clippedBottom = allowsClippedBottom
+            columnEncoding = newEncoding
             document = current
         }
         lock.unlock()

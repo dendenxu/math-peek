@@ -12,8 +12,9 @@ func scalarOffset(_ source: String, _ needle: String) -> Int {
     return source[..<range.lowerBound].unicodeScalars.count
 }
 
-func assertSameFormula(_ source: String, needles: [String], required: [String], name: String) {
-    let document = TerminalFormulaDocument(text: source)
+func assertSameFormula(_ source: String, needles: [String], required: [String], name: String,
+                       columnEncoding: TerminalFormulaDocument.ColumnEncoding = .unicode) {
+    let document = TerminalFormulaDocument(text: source, columnEncoding: columnEncoding)
     var formulas = Set<String>()
     for needle in needles {
         let start = scalarOffset(source, needle)
@@ -128,6 +129,57 @@ plain                                                                 │  plain
 let neighborDocument = TerminalFormulaDocument(text: neighbors)
 check(neighborDocument.match(at: scalarOffset(neighbors, "x+y"))?.formula == "$$x+y$$", "left pane isolation")
 check(neighborDocument.match(at: scalarOffset(neighbors, "a+b"))?.formula == "$$a+b$$", "right pane isolation")
+
+// The same terminal cells serialized as normal text and as iTerm AX text.
+// Explicit cell widths keep the fixture independent of the production width scan.
+let cellRows: [(plain: String, ax: String, width: Int)] = [
+    ("中文", "中 文 ", 4),
+    ("", "", 0),
+    ("一二三四五", "一 二 三 四 五 ", 10),
+    ("e\u{301} 中", "e\u{301} 中 ", 4),
+    ("🚀 中文", "🚀  中 文 ", 7),
+    ("末", "末 ", 2),
+    ("结束了", "结 束 了 ", 6),
+]
+let predictionRows = ["plain", "$$", #"\widehat{x}_0"#, "=",
+                      #"\widetilde{x}_t-t\,v_\theta(\widetilde{x}_t,t,c)."#, "$$", "plain"]
+let predictionNeedles = [#"\widehat{x}_0"#, #"\widetilde{x}_t-t"#, #"v_\theta"#]
+func predictionScreen(padded: Bool) -> String {
+    zip(cellRows, predictionRows).map { row, formula in
+        (padded ? row.ax : row.plain) + String(repeating: " ", count: 24 - row.width) + "│  " + formula
+    }.joined(separator: "\n")
+}
+let plainPrediction = predictionScreen(padded: false)
+let axPrediction = predictionScreen(padded: true)
+assertSameFormula(plainPrediction, needles: predictionNeedles, required: predictionNeedles,
+                  name: "Unicode tmux columns with changing CJK neighbors")
+assertSameFormula(axPrediction, needles: predictionNeedles, required: predictionNeedles,
+                  name: "iTerm padded cells with CJK, combining marks and emoji", columnEncoding: .paddedCells)
+let paddedDocument = TerminalFormulaDocument(text: axPrediction, columnEncoding: .paddedCells)
+let axScalars = Array(axPrediction.unicodeScalars)
+let expectedFragments = Set(predictionRows.flatMap { [$0, "  " + $0] })
+for needle in predictionNeedles {
+    let offset = scalarOffset(axPrediction, needle)
+    if let match = paddedDocument.match(at: offset) {
+        check(match.sourceRanges.contains { $0.contains(offset) }, "padded source ranges contain hovered offset")
+        for range in match.sourceRanges {
+            let original = String(String.UnicodeScalarView(axScalars[range]))
+            check(!original.contains("│"), "padded source ranges exclude neighboring panes")
+            check(expectedFragments.contains(original), "padded source ranges preserve original formula text")
+        }
+    }
+}
+check(paddedDocument.match(at: scalarOffset(axPrediction, "一")) == nil,
+      "CJK text in neighboring pane never borrows the right formula")
+
+let encodingCache = FormulaDocumentCache()
+let predictionOffset = scalarOffset(axPrediction, predictionNeedles[0])
+check(encodingCache.match(text: axPrediction, at: predictionOffset) == nil,
+      "padded fixture reproduces failure with Unicode columns")
+check(encodingCache.match(text: axPrediction, at: predictionOffset, columnEncoding: .paddedCells) != nil,
+      "cache includes column encoding for identical source text")
+check(encodingCache.match(text: axPrediction, at: predictionOffset) == nil,
+      "switching back cannot reuse the padded document")
 
 for source in [#"$HOME/Applications/Ghostty.app"#, "ordinary prose", "Price $5 and $10", #"print(\"\frac{a}{b}\")"#] {
     let document = TerminalFormulaDocument(text: source)

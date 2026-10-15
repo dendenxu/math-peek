@@ -21,11 +21,19 @@ Weaker blocks cannot overlap stronger blocks. An unresolved display delimiter di
 
 ## Determinism
 
-- A snapshot is parsed once and cached by its exact text and edge semantics.
+- A snapshot is parsed once and cached by its exact text, edge semantics, and column encoding.
 - A logical pane is cached by its stable row span and terminal-column boundaries.
 - Every character covered by one formula returns the same block and source ranges.
 - Direct accessibility coordinates and the local bounds retry query the same index.
 - Changed text creates a new document; concurrent callers retain their local immutable document.
+
+## Terminal columns
+
+Ordinary text uses Unicode display widths when locating tmux borders. iTerm2
+Accessibility text includes a continuation cell after wide glyphs, so that adapter
+selects padded-cell columns instead. Both representations retain their original
+scalars and source offsets; whitespace is never removed to align pane borders.
+cmux and Ghostty keep the default Unicode column encoding.
 
 ## Components
 
