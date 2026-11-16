@@ -3,7 +3,7 @@
 2026-09-16，实测官方 Ghostty **1.3.1 (15212)**，源码以
 [`v1.3.1`](https://github.com/ghostty-org/ghostty/tree/v1.3.1) 为准。
 这是原始研究记录。后续 **Math Peek 1.3.0 提供了需显式配对的实验悬停**，
-用法见 [README](../README.md#连接-ghostty实验模式)。本文复现的通用接口限制仍然存在；
+用法见 [README](../README.zh-CN.md#连接-ghostty实验模式)。本文复现的通用接口限制仍然存在；
 研究工具不进入应用构建，也不能把受控 fixture 通过等同于任意终端画面均受支持。
 
 ## 已经验证的进展

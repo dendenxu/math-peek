@@ -1,16 +1,16 @@
-<p align="center"><img src="assets/icon.png" width="112" alt="Math Peek 图标"></p>
+<p align="center"><img src="assets/icon.png" width="112" alt="Math Peek icon"></p>
 
 # Math Peek
 
-把鼠标停在终端里的 LaTeX 上，查看排版后的公式。Math Peek 常驻 macOS 菜单栏，移开鼠标后自动收起预览。
+Hover over LaTeX in your terminal to see the rendered formula. Math Peek runs in the macOS menu bar and dismisses the preview when you move away.
 
-支持 macOS 13 及以上，适用于 Apple Silicon 和 Intel Mac。
+Requires macOS 13 or later. Supports Apple Silicon and Intel Macs.
 
-[English](README.en.md) · [下载最新版](https://github.com/dendenxu/math-peek/releases/latest)
+[中文](README.zh-CN.md) · [Download](https://github.com/dendenxu/math-peek/releases/latest)
 
-![Math Peek 悬停预览](screenshots/hover-demo.gif)
+![Math Peek hover preview](screenshots/hover-demo.gif)
 
-## 安装
+## Install
 
 ### Homebrew
 
@@ -19,67 +19,67 @@ brew install --cask dendenxu/tap/math-peek
 open -a "Math Peek"
 ```
 
-如果 Homebrew 提示 `untrusted tap`，先运行 `brew trust --cask dendenxu/tap/math-peek`，然后重新安装。
+If Homebrew reports an `untrusted tap`, run `brew trust --cask dendenxu/tap/math-peek` and retry.
 
-更新前先从菜单栏退出 Math Peek，再运行：
+Quit Math Peek before updating:
 
 ```sh
 brew upgrade --cask dendenxu/tap/math-peek
 ```
 
-### 直接下载
+### Download
 
-从 [Releases](https://github.com/dendenxu/math-peek/releases/latest) 下载 ZIP，解压后将 `Math Peek.app` 拖到“应用程序”。每个版本都附有 SHA256 校验文件。
+Download the ZIP from [Releases](https://github.com/dendenxu/math-peek/releases/latest), extract it, and move `Math Peek.app` to Applications. Each release includes a SHA256 checksum.
 
-发布包尚未经过 Apple 公证。如果 macOS 阻止首次打开，可到“系统设置 → 隐私与安全性”中选择“仍要打开”。
+The app is not yet notarized by Apple. If macOS blocks the first launch, open System Settings → Privacy & Security and choose Open Anyway.
 
-## 第一次使用
+## First use
 
-1. 打开 Math Peek，按提示允许“辅助功能”访问，用来读取终端里的文字和字符位置。
-2. 在设置页确认终端已启用，并开启“悬停预览”。
-3. 切回终端，将鼠标停在公式上。
+1. Open Math Peek and grant Accessibility access so it can read terminal text and character positions.
+2. Check that your terminal is enabled in setup, then turn on hover previews.
+3. Switch back to your terminal and hover over a formula.
 
-设置完成后可以关掉窗口，Math Peek 会留在菜单栏 `M∑` 中。需要时可从菜单栏重新打开设置、添加终端或开启登录启动。
+You can close the setup window. Math Peek stays in the `M∑` menu bar, where you can reopen settings, add terminals, or enable Launch at Login.
 
-支持常见的行内和多行 LaTeX，包括分式、矩阵、对齐公式和括号注释。较大的公式会自动缩放，暂不支持的语法会显示为源码。
+Hover previews handle common inline and multiline LaTeX, including fractions, matrices, aligned equations, and brace annotations. Large formulas scale to fit; unsupported syntax appears as source text.
 
-## 终端支持
+## Terminal support
 
-| 终端 | 使用方式 |
+| Terminal | Setup |
 | --- | --- |
-| iTerm2、Terminal | 授予辅助功能权限后即可使用，也支持 SSH 和 tmux 中的输出 |
-| cmux | [连接本机窗格](#连接-cmux) |
-| Ghostty | [实验模式](#连接-ghostty实验模式)，每个本机窗格需单独连接 |
+| iTerm2, Terminal.app | Ready after granting Accessibility; also works with SSH and tmux output |
+| cmux | [Connect a local pane](#connect-cmux) |
+| Ghostty | [Experimental mode](#connect-ghostty-experimental); connect each local pane |
 
-其他终端可以在设置页添加。能否悬停取决于终端提供的辅助功能接口，详见[兼容性说明](docs/terminal-compatibility.md)。
+You can add other terminals in setup. Hover support depends on the terminal's Accessibility interfaces; see the [compatibility notes](docs/terminal-compatibility.md).
 
-### 连接 cmux
+### Connect cmux
 
-在本机的 cmux 窗格中运行：
+Run in a local cmux pane:
 
 ```sh
 math-peek connect cmux
 ```
 
-连接成功后即可使用。菜单栏的 `Terminal Apps` 中可以查看连接状态或断开连接。
+Once connected, hover previews are available. Use `Terminal Apps` in the menu bar to check the connection or disconnect.
 
-### 连接 Ghostty（实验模式）
+### Connect Ghostty (experimental)
 
-在每个 Ghostty 窗格的本机 shell 中运行（tmux、screen、SSH 会话外）：
+Run in each local Ghostty pane, outside tmux, screen, or SSH:
 
 ```sh
 math-peek connect ghostty
 ```
 
-重启 Math Peek，或修改字体、行距、屏幕缩放后，需要重新连接。
+Reconnect after restarting Math Peek or changing the font, line spacing, or display scaling.
 
-Ghostty 模式适合普通终端输出；全屏 TUI 和频繁重绘的内容可能漏识别或定位不准。详细情况见 [Ghostty 说明](docs/ghostty-research.md)。
+Ghostty mode works best with ordinary terminal output. Full-screen TUIs and frequently redrawn content can produce missing or misplaced previews. See the [Ghostty notes](docs/ghostty-research.md) for details.
 
-## 阅读窗口与命令行
+## Reader and CLI
 
-从菜单栏选择 `Open Reader`，可以查看整段 Markdown 或纯 LaTeX。快捷键 `Control-Command-M` 会读取当前终端的选区或可见内容；在其他应用中则预览剪贴板。
+Choose `Open Reader` from the menu bar to view a Markdown document or plain LaTeX. `Control-Command-M` reads the selection or visible content from the current terminal; in other apps, it previews the clipboard.
 
-也可以通过命令行打开文件、读取剪贴板或跟随终端输出：
+The CLI accepts files, piped input, and clipboard content. It can also capture or follow terminal output:
 
 ```sh
 math-peek answer.md
@@ -89,19 +89,19 @@ math-peek --capture
 math-peek --follow
 ```
 
-文件和管道输入须为 UTF-8，最多 2 MB。
+File and pipe input must be UTF-8, up to 2 MB.
 
-## 常见问题
+## Troubleshooting
 
-- **没有浮窗**：检查辅助功能权限和悬停开关，并确认终端在前台。cmux 和 Ghostty 还需要完成连接。
-- **更新后失效**：在系统辅助功能设置中将 Math Peek 关闭再开启。如果仍提示未授权，再移除旧条目，重新添加当前安装的应用。
-- **某个公式显示异常**：先让这条公式完整地出现在视口内，也可以复制到阅读窗口查看。
+- **No popup:** check Accessibility access, the hover switch, and that your terminal is in the foreground. cmux and Ghostty also need a connection.
+- **Hover stops after an update:** turn Math Peek's Accessibility switch off and on. If it still reports missing permission, remove the old entry and add the currently installed app again.
+- **A formula looks wrong:** scroll the whole formula into view, or copy it into the reader.
 
-诊断日志位于 `~/Library/Caches/Math Peek/`，记录运行状态和耗时，不含终端正文。
+Diagnostics are stored in `~/Library/Caches/Math Peek/`. They contain status and timing information, not terminal text.
 
-## 开发与发布
+## Development
 
-从源码构建需要 Swift 5.9 或更新版本。新版 Xcode Command Line Tools 可以直接构建，旧工具链需要完整 Xcode。安装前请先退出 Math Peek。
+Building from source requires Swift 5.9 or later. Recent Xcode Command Line Tools can build directly; older toolchains need full Xcode. Quit Math Peek before installing.
 
 ```sh
 git clone https://github.com/dendenxu/math-peek.git
@@ -110,9 +110,9 @@ cd math-peek
 open "$HOME/Applications/Math Peek.app"
 ```
 
-源码安装会将应用放在 `~/Applications`，命令放在 `~/.local/bin`。使用命令行前，请确认 `~/.local/bin` 已加入 `PATH`。
+The source installer places the app in `~/Applications` and the CLI in `~/.local/bin`. Make sure `~/.local/bin` is on your `PATH` to use the CLI.
 
-运行测试和构建发布包：
+To run the tests and build a release:
 
 ```sh
 scripts/test_native.sh
@@ -120,6 +120,6 @@ node --test web/core.test.cjs
 scripts/build_release.sh
 ```
 
-版本号由 `VERSION` 管理。发布包输出到 `build/release/`；推送对应的 `v<版本>` 标签会触发 GitHub Actions 发布。
+`VERSION` controls the version number. Release archives are written to `build/release/`; pushing the matching `v<version>` tag triggers a GitHub Actions release.
 
-悬停渲染使用 SwiftMath，阅读窗口使用 KaTeX、marked 和 DOMPurify，第三方许可证随应用分发。实现细节见[架构说明](docs/architecture.md)。
+Hover rendering uses SwiftMath. The reader uses KaTeX, marked, and DOMPurify. Third-party licenses are included in the app. See the [architecture notes](docs/architecture.md) for implementation details.
