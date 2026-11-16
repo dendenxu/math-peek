@@ -161,6 +161,9 @@ prefix is also supported. It conservatively recovers
 inline `\(...\)` rendered as ordinary parentheses when the body has explicit
 TeX commands, math atoms, function notation, or operator structure. Multiline `aligned`, common matrices, and complete
 outer `\boxed{...}` formulas work. Unsupported syntax falls back to source text.
+Standalone brace annotations draw actual curves with centered labels and aligned equation baselines, including nested braces.
+A closing display delimiter left at the top after scrolling no longer consumes the next complete formula;
+unpaired markers only suppress bare-math recovery in their own region.
 Each immutable terminal snapshot reconstructs its pane layout and formula-block index once. Pointer movement only queries that index;
 it never reparses nearby rows. Complete delimited blocks outrank raw TeX, and uncertain fragments stay hidden.
 On iTerm2, direct coordinates and the settled local-bounds retry query the same index, so they cannot use different formula semantics.

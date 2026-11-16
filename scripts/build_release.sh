@@ -56,7 +56,10 @@ fi
 cat > "$release_dir/RELEASE_NOTES.md" <<NOTES
 Math Peek ${version}：独立的 macOS 菜单栏公式预览应用。
 
-- 修复 iTerm2 + tmux 中相邻窗格含中文时的公式悬停失效：按辅助功能文本的占位单元格计算分隔线位置，并保留原始字符映射。
+- 修复 tmux 滚动截断上一条公式后，孤立的结束分隔符使后续公式配对错位的问题。
+- 未配对的显示公式标记只保护所在区域，不再禁止后续完整公式之外的裸公式识别；代码块中的标记保持惰性。
+- 原生悬停补齐独立上下括号注释的曲线、中文说明和基线对齐，支持嵌套括号及整体缩放。
+- 字符坐标不匹配时启用局部回退，失败后即使鼠标不动也会重试；保留居中上下标与条件分隔线兼容。
 - 预编译 universal 应用，同时支持 Apple Silicon 和 Intel，要求 macOS 13 或更新版本。
 - 解压 ZIP，把 Math Peek.app 拖到“应用程序”，打开后允许辅助功能权限。
 - 安装器、CLI、终端取字和悬停渲染均为原生实现，不需要 Python，不使用 OCR。
@@ -75,7 +78,7 @@ Math Peek ${version}：独立的 macOS 菜单栏公式预览应用。
 - iTerm2 直接坐标和停稳后的局部 bounds 回退查询同一公式索引，不存在两套语义 fast path。
 - 前台应用通过系统切换通知缓存，不在 60 Hz 悬停循环中重复查询 LaunchServices。
 - 行内公式的 \( / \) 被显示成普通括号时，含 TeX 命令、紧凑上下标或单个数学变量的内容仍可保守识别。
-- 更新后若辅助功能开关已开启但应用仍提示未授权，请移除旧条目，重新添加当前安装的 Math Peek.app 并开启。
+- 更新后若应用提示辅助功能未授权，请先将 Math Peek 的开关关闭再开启；仍未恢复时，再移除旧条目并重新添加当前安装的应用。
 - 中文主 README、英文说明和实际悬停演示 GIF。
 
 Homebrew 安装：
@@ -94,8 +97,10 @@ $signing_note_zh
 ---
 
 Standalone native macOS formula preview, with universal binaries for Apple Silicon and Intel.
-Fixes formula hover in iTerm2/tmux when neighboring panes contain wide characters,
-by accounting for Accessibility continuation cells without changing source offsets.
+Fixes delimiter pairing after tmux scrolling leaves an orphan closing display marker.
+Unpaired markers no longer suppress bare math throughout the snapshot, and code fences remain inert.
+Native brace annotations retain their curves, centered labels, and equation baselines.
+Position lookup failures retry after refresh, including when the pointer has not moved.
 No Python or OCR. iTerm2 and Terminal use native Accessibility text and positions.
 cmux 0.64.24 uses its native viewport grid after running math-peek connect cmux in a local pane.
 Ghostty 1.3.1 supports experimental hover after math-peek connect ghostty in each local pane, without modifying Ghostty.

@@ -181,6 +181,72 @@ check(encodingCache.match(text: axPrediction, at: predictionOffset, columnEncodi
 check(encodingCache.match(text: axPrediction, at: predictionOffset) == nil,
       "switching back cannot reuse the padded document")
 
+// Scroll through every row of an earlier formula, including its lone closing
+// delimiter. Later complete blocks must retain both delimiters and every hit.
+let followingFormulas = ["$$\n\\frac{P}{P+R}\n$$", "$$\nx+y=2\n$$"]
+for separator in ["", "Next formula", "Next", "•", "---", "下面这个"] {
+    let rows = ["$$", #"\underbrace{"#, #"\frac{x_t}{2}"#, #"}_{\text{old label}}"#, "$$", separator]
+        + followingFormulas[0].components(separatedBy: "\n") + [separator]
+        + followingFormulas[1].components(separatedBy: "\n")
+    for crop in 0...5 {
+        let visible = Array(rows.dropFirst(crop))
+        for variant in 0...2 {
+            let prefixes = visible.indices.map { row -> String in
+                guard variant > 0 else { return "" }
+                let left = row.isMultiple(of: 2) ? (variant == 2 ? "左 栏 " : "左栏") : "logs"
+                return left + String(repeating: " ", count: 16) + "│"
+            }
+            let source = zip(prefixes, visible).map(+).joined(separator: "\n")
+            let document = TerminalFormulaDocument(text: source, columnEncoding: variant == 2 ? .paddedCells : .unicode)
+            var rowOffset = 0
+            for row in visible.indices {
+                let originalRow = row + crop
+                let formulaIndex: Int? = (6...8).contains(originalRow) ? 0 : (10...12).contains(originalRow) ? 1 : nil
+                if let formulaIndex {
+                    let start = rowOffset + prefixes[row].unicodeScalars.count
+                    for offset in start..<(start + visible[row].unicodeScalars.count) {
+                        let hit = document.match(at: offset)
+                        check(hit?.formula == followingFormulas[formulaIndex] && hit?.kind == .delimited,
+                              "scroll crop \(crop), gap \(separator), columns \(variant), offset \(offset) preserves complete formula")
+                    }
+                }
+                rowOffset += prefixes[row].unicodeScalars.count + visible[row].unicodeScalars.count + 1
+            }
+        }
+    }
+}
+
+let completeAnchor = "$$\nx=1\n$$"
+let independentBare = #"\boxed{q=\frac{x}{y}}"#
+let orphanThenBare = "$$\nNext\n" + completeAnchor + "\n\n" + independentBare
+check(TerminalFormulaDocument(text: orphanThenBare).match(at: scalarOffset(orphanThenBare, independentBare))?.formula == independentBare,
+      "orphan closing before a complete block does not suppress later bare math")
+let unfinishedAfterAnchor = completeAnchor + "\nUnfinished:\n$$\n" + independentBare
+check(TerminalFormulaDocument(text: unfinishedAfterAnchor, allowsClippedBottom: false)
+    .match(at: scalarOffset(unfinishedAfterAnchor, independentBare)) == nil,
+      "an unresolved opening still protects its own incomplete formula from bare fallback")
+let unfinishedWithInline = completeAnchor + "\n$$\ncontext $x$\n" + independentBare
+check(TerminalFormulaDocument(text: unfinishedWithInline, allowsClippedBottom: false)
+    .match(at: scalarOffset(unfinishedWithInline, independentBare)) == nil,
+      "inline math cannot terminate an unresolved display region")
+let inlineGap = "$$\nNext $a+b$ formula\n" + followingFormulas[0]
+check(TerminalFormulaDocument(text: inlineGap).match(at: scalarOffset(inlineGap, "a+b"))?.formula == "$a+b$",
+      "resynchronization still indexes inline math between the orphan and next display")
+for fence in ["```", "~~~"] {
+    let source = fence + "tex\n" + followingFormulas[0] + "\n" + fence + "\n" + independentBare
+    let document = TerminalFormulaDocument(text: source)
+    check(document.match(at: scalarOffset(source, #"\frac{P}"#)) == nil, "fenced display delimiters remain inert")
+    check(document.match(at: scalarOffset(source, independentBare))?.formula == independentBare,
+          "fenced display delimiters do not suppress later bare math")
+}
+
+for body in ["abc", "x", "123", #"\text{Next formula}"#, #"abc def! + \frac{1}{2}"#] {
+    let expected = "$$\n" + body + "\n$$"
+    let source = expected + "\nNext\n" + followingFormulas[0]
+    let document = TerminalFormulaDocument(text: source)
+    check(document.match(at: 0)?.formula == expected, "resynchronization preserves complete display bodies")
+}
+
 for source in [#"$HOME/Applications/Ghostty.app"#, "ordinary prose", "Price $5 and $10", #"print(\"\frac{a}{b}\")"#] {
     let document = TerminalFormulaDocument(text: source)
     for offset in 0..<source.unicodeScalars.count {

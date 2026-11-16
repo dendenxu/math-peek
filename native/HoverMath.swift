@@ -59,7 +59,7 @@ enum HoverMath {
         blocks.append(contentsOf: clippedDisplayBlocks(
             source, padding: panePadding, existing: blocks,
             allowsTop: allowsClippedTop, allowsBottom: allowsClippedBottom))
-        let unresolvedDisplayBoundary = hasUnresolvedDisplayBoundary(source, blocks: blocks)
+        let unresolvedDisplays = unresolvedDisplayRanges(source, blocks: blocks)
 
         // Bare TeX is deliberately last. Probe each physical row once, plus
         // explicit boxed occurrences that may sit inside prose. Any overlap
@@ -84,8 +84,9 @@ enum HoverMath {
             for index in 0...(source.count - boxed.count) where matches(source, boxed, at: index) { probes.insert(index) }
         }
         var bareRanges = Set<String>()
-        for probe in unresolvedDisplayBoundary ? [] : probes.sorted() {
-            guard let range = bare(source, probe) else { continue }
+        for probe in probes.sorted() {
+            guard let range = bare(source, probe),
+                  !unresolvedDisplays.contains(where: { $0.overlaps(range) }) else { continue }
             let repaired = repairRows(repair(Array(source[range]), padding: panePadding, continuationIndent: true))
             let key = "\(range.lowerBound):\(range.upperBound):\(repaired)"
             guard bareRanges.insert(key).inserted,
@@ -106,17 +107,25 @@ enum HoverMath {
         return Index(blocks: blocks)
     }
 
-    private static func hasUnresolvedDisplayBoundary(_ text: Scalars, blocks: [Block]) -> Bool {
-        guard text.count >= 2 else { return false }
+    private static func unresolvedDisplayRanges(_ text: Scalars, blocks: [Block]) -> [Range<Int>] {
+        guard text.count >= 2 else { return [] }
+        let displays = blocks.filter { $0.formula.hasPrefix("$$") || $0.formula.hasPrefix("\\[") }
+        var result: [Range<Int>] = []
         for index in 0..<(text.count - 1) where matches(text, ["$", "$"], at: index) && !escaped(text, index) {
             var lineStart = index
             while lineStart > 0 && !newline(text[lineStart - 1]) { lineStart -= 1 }
             let prefix = string(text[lineStart..<index])
             // Inline double-dollar math is handled by normal delimiter pairing.
             guard prefix.allSatisfy({ $0 == " " || $0 == "\t" }) else { continue }
-            if !blocks.contains(where: { $0.kind > .bare && $0.range.contains(index) }) { return true }
+            guard !blocks.contains(where: { $0.kind > .bare && $0.range.contains(index) }),
+                  !insideCode(text, index) else { continue }
+            // Complete blocks establish fresh delimiter context. An unresolved
+            // marker must not suppress unrelated bare math beyond those blocks.
+            let lower = displays.filter { $0.range.upperBound <= index }.map(\.range.upperBound).max() ?? 0
+            let upper = displays.filter { $0.range.lowerBound > index }.map(\.range.lowerBound).min() ?? text.count
+            result.append(lower..<upper)
         }
-        return false
+        return result
     }
 
     private typealias Scalars = [Unicode.Scalar]
@@ -487,18 +496,19 @@ enum HoverMath {
         return end
     }
 
-    private static func isolatedLineToken(_ text: Scalars, _ index: Int, _ token: Unicode.Scalar,
+    private static func isolatedLineToken(_ text: Scalars, _ index: Int, _ token: String,
                                           allowHeadingPrefix: Bool = false) -> Bool {
-        guard index >= 0, index < text.count, text[index] == token else { return false }
+        let token = Array(token.unicodeScalars)
+        guard !token.isEmpty, matches(text, token, at: index) else { return false }
         var start = index
         while start > 0 && !newline(text[start - 1]) { start -= 1 }
-        var end = index + 1
+        var end = index + token.count
         while end < text.count && !newline(text[end]) { end += 1 }
         let prefix = string(text[start..<index])
         let validPrefix = prefix.allSatisfy { $0 == " " || $0 == "\t" } ||
             allowHeadingPrefix && !regex(#"^[ \t]{0,3}(?:#{1,6}|[>›•])[ \t]+$"#, prefix).isEmpty
         return validPrefix &&
-            text[(index + 1)..<end].allSatisfy { $0 == " " || $0 == "\t" || $0 == "\r" }
+            text[(index + token.count)..<end].allSatisfy { $0 == " " || $0 == "\t" || $0 == "\r" }
     }
 
     private static func knownCommand(in source: String) -> Bool {
@@ -612,6 +622,34 @@ enum HoverMath {
         return "\\(" + source.dropFirst().dropLast() + "\\)"
     }
 
+    private static func displayMathSignal(_ body: ArraySlice<Unicode.Scalar>, padding: Bool) -> Bool {
+        let source = repair(Array(body), padding: padding)
+        // Nested dollar math usually belongs to prose between display blocks.
+        guard !source.contains("$") else { return false }
+        if !regex(#"\\[A-Za-z]+"#, source).isEmpty { return true }
+        let compact = source.unicodeScalars.filter { !$0.properties.isWhitespace }
+        let operand = compact.contains { CharacterSet.letters.contains($0) || CharacterSet.decimalDigits.contains($0) }
+        return operand && (compact.count <= 2 || Double(String(compact)) != nil || compact.contains {
+            "=+-*/^_{}<>".unicodeScalars.contains($0) || $0.properties.generalCategory == .mathSymbol
+        })
+    }
+
+    private static func orphanDisplayClosing(_ text: Scalars, at start: Int, padding: Bool) -> Bool {
+        guard isolatedLineToken(text, start, "$$", allowHeadingPrefix: true) else { return false }
+        let delimiter: Scalars = ["$", "$"]
+        let limit = min(text.count, start + 16_388)
+        var position = start + 2
+        while let next = find(text, delimiter, from: position, limit: limit) {
+            if escaped(text, next) { position = next + 2; continue }
+            guard !displayMathSignal(text[(start + 2)..<next], padding: padding),
+                  let end = closing(text, opening: delimiter, closing: delimiter, start: next, padding: padding),
+                  displayMathSignal(text[(next + 2)..<end], padding: padding),
+                  !insideCode(text, next), !insideCode(text, end) else { return false }
+            return true
+        }
+        return false
+    }
+
     private static func delimitedBlocks(_ text: Scalars, padding: Bool) -> [(range: Range<Int>, kind: Kind)] {
         var result: [(Range<Int>, Kind)] = []
         var index = 0
@@ -645,6 +683,12 @@ enum HoverMath {
                 }
             }
             if !opening.isEmpty {
+                if opening == ["$", "$"], orphanDisplayClosing(text, at: index, padding: padding) {
+                    // Skip only the orphan, so intervening inline math and code
+                    // still pass through their usual scanners before the next block.
+                    index += opening.count
+                    continue
+                }
                 if let end = closing(text, opening: opening, closing: close, start: index, padding: padding) {
                     let after = end + close.count
                     result.append((index..<after, .delimited)); index = after; continue
@@ -691,7 +735,8 @@ enum HoverMath {
             return body
         }
         let tokens: [(line: Int, range: Range<Int>)] = lines.indices.compactMap { line in
-            delimiter(lines[line]).map { (line, $0) }
+            guard let range = delimiter(lines[line]), !insideCode(text, range.lowerBound) else { return nil }
+            return (line, range)
         }
         var result: [Block] = []
         for (tokenIndex, token) in tokens.enumerated() {

@@ -19,6 +19,8 @@ From strongest to weakest:
 
 Weaker blocks cannot overlap stronger blocks. An unresolved display delimiter disables raw-TeX fallback in that region, so an incomplete large formula cannot turn into a smaller apparently valid fragment. Ambiguous clipped blocks are rejected.
 
+A standalone closing delimiter left by scrolling is skipped when its apparent body lacks math structure and the next pair contains a complete formula. Scanning continues after that delimiter, preserving intervening inline math and code fences. Known display blocks bound unresolved regions; an orphan marker cannot disable bare-math recovery throughout the snapshot.
+
 ## Determinism
 
 - A snapshot is parsed once and cached by its exact text, edge semantics, and column encoding.
@@ -42,6 +44,7 @@ cmux and Ghostty keep the default Unicode column encoding.
 - HoverMath: single Swift formula scanner and precedence rules.
 - HoverController: input scheduling, generations, and stale-result rejection.
 - HoverPresenter: native panel construction, rendering, sizing, and placement.
+- FormulaView / BracedFormulaView: SwiftMath rendering plus native brace curves, centered annotations, and baseline composition. Brace layout handles top-level expressions and nested brace bodies/annotations; unsupported embedding inside fractions or paired delimiters retains the readable-source fallback.
 - HoverDiagnostics: stage-to-status mapping and metadata-only diagnostics.
 - MathPeek modules: application lifecycle, menus/settings, terminal registry, connections, and reader/window behavior.
 
