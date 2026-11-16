@@ -5,6 +5,8 @@ import SwiftMath
 /// Synchronously measures and draws a formula without a web view or helper process.
 final class FormulaView: NSView {
     private let math = MTMathUILabel()
+    private var bracedMath: BracedFormulaView?
+    var mathContent: NSView { bracedMath ?? math }
     private let fallback = NSTextField(wrappingLabelWithString: "")
     private let horizontalPadding: CGFloat = 12
     private let verticalPadding: CGFloat = 10
@@ -51,9 +53,13 @@ final class FormulaView: NSView {
         // width. Keep both passes unbounded; scale the complete formula below.
         math.preferredMaxLayoutWidth = .greatestFiniteMagnitude
         renderedBody = Self.normalizedRowSpacing(boxed.body)
-        math.latex = Self.normalizedNativeCompatibility(renderedBody)
+        bracedMath?.removeFromSuperview()
+        bracedMath = BracedFormulaView.make(renderedBody, mode: math.labelMode)
+        if let bracedMath { addSubview(bracedMath) }
+        math.latex = bracedMath == nil ? Self.normalizedNativeCompatibility(renderedBody) : ""
         error = math.error
-        var content = math.intrinsicContentSize
+        let drawing = mathContent
+        var content = drawing.intrinsicContentSize
         var drawingScale: CGFloat = 1
         var boxPadding: CGFloat = 0
         boxFrames.removeAll()
@@ -66,10 +72,11 @@ final class FormulaView: NSView {
             drawingScale = min(1, available.width / max(1, content.width), available.height / max(1, content.height))
             content.width *= drawingScale
             content.height *= drawingScale
-            math.isHidden = false
+            math.isHidden = bracedMath != nil
             fallback.isHidden = true
         } else {
             math.isHidden = true
+            bracedMath?.isHidden = true
             fallback.isHidden = false
             fallback.stringValue = parsed.body
             fallback.toolTip = error?.localizedDescription
@@ -89,11 +96,11 @@ final class FormulaView: NSView {
         let contentFrame = NSRect(x: insetX, y: insetY,
                                   width: max(1, renderedSize.width - 2 * insetX),
                                   height: max(1, renderedSize.height - 2 * insetY))
-        math.frame = contentFrame.insetBy(dx: boxPadding * drawingScale, dy: boxPadding * drawingScale)
-        math.bounds = NSRect(origin: .zero, size: NSSize(
-            width: max(1, math.frame.width / drawingScale),
-            height: max(1, math.frame.height / drawingScale)))
-        if !math.isHidden {
+        drawing.frame = contentFrame.insetBy(dx: boxPadding * drawingScale, dy: boxPadding * drawingScale)
+        drawing.bounds = NSRect(origin: .zero, size: NSSize(
+            width: max(1, drawing.frame.width / drawingScale),
+            height: max(1, drawing.frame.height / drawingScale)))
+        if fallback.isHidden {
             boxLineWidth = 0.6 * drawingScale
             boxFrames = (0..<boxed.count).map { index in
                 let inset = CGFloat(index) * boxInset * drawingScale + boxLineWidth / 2
@@ -101,7 +108,7 @@ final class FormulaView: NSView {
             }
         }
         fallback.frame = contentFrame
-        math.layoutSubtreeIfNeeded()
+        drawing.layoutSubtreeIfNeeded()
         needsDisplay = true
         return renderedSize
     }
@@ -198,8 +205,8 @@ final class FormulaView: NSView {
 
     /// SwiftMath deliberately implements a smaller command set than KaTeX.
     /// Preserve standard two-argument stacking commands by expressing them as
-    /// a compact one-column math table, which SwiftMath renders natively. This
-    /// is structural rather than formula-specific and supports nested groups.
+    /// a compact one-column math table. Middle delimiters use its native sized
+    /// delimiter command. These conversions preserve the original source body.
     static func normalizedNativeCompatibility(_ source: String) -> String {
         let characters = Array(source)
 
@@ -233,8 +240,12 @@ final class FormulaView: NSView {
 
         var result = ""
         var index = 0
+        var groupDepth = 0
+        var leftDepths: [Int] = []
         while index < characters.count {
             guard characters[index] == "\\" else {
+                if characters[index] == "{" { groupDepth += 1 }
+                else if characters[index] == "}" { groupDepth -= 1 }
                 result.append(characters[index])
                 index += 1
                 continue
@@ -250,6 +261,19 @@ final class FormulaView: NSView {
                 commandEnd += 1
             }
             let command = String(characters[(index + 1)..<commandEnd])
+            if command.isEmpty {
+                let end = min(index + 2, characters.count)
+                result += String(characters[index..<end])
+                index = end
+                continue
+            }
+            if command == "left" { leftDepths.append(groupDepth) }
+            else if command == "right", leftDepths.last == groupDepth { leftDepths.removeLast() }
+            else if command == "middle", leftDepths.last == groupDepth {
+                result += "\\bigm"
+                index = commandEnd
+                continue
+            }
             guard command == "underset" || command == "overset" || command == "stackrel" else {
                 let end = max(index + 1, commandEnd)
                 result += String(characters[index..<end])
@@ -291,5 +315,211 @@ final class FormulaView: NSView {
             }
         }
         return (text, true)
+    }
+}
+
+/// Compose brace annotations on the expression's baseline. SwiftMath still
+/// measures and draws each math fragment; only the horizontal brace is ours.
+final class BracedFormulaView: NSView {
+    private let naturalSize: NSSize
+    let baseline: CGFloat
+    private(set) var curve: NSBezierPath?
+
+    override var intrinsicContentSize: NSSize { naturalSize }
+
+    private init(size: NSSize, baseline: CGFloat) {
+        naturalSize = size
+        self.baseline = baseline
+        super.init(frame: NSRect(origin: .zero, size: size))
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        NSColor(white: 0.94, alpha: 1).setStroke()
+        curve?.stroke()
+    }
+
+    private enum Part {
+        case math(String)
+        case brace(body: String, annotation: String?, over: Bool)
+    }
+    private enum Failure: Error { case unsupported }
+
+    static func make(_ source: String, mode: MTMathUILabelMode) -> BracedFormulaView? {
+        guard source.contains("\\underbrace") || source.contains("\\overbrace"),
+              let parts = try? split(source), parts.contains(where: {
+                  if case .brace = $0 { return true }; return false
+              }) else { return nil }
+        return try? layout(parts, fontSize: 14, mode: mode, depth: 0)
+    }
+
+    private static func split(_ source: String) throws -> [Part] {
+        let chars = Array(source)
+        func skipSpace(_ start: Int) -> Int {
+            var i = start
+            while i < chars.count, chars[i].isWhitespace { i += 1 }
+            return i
+        }
+        func group(_ start: Int) throws -> (String, Int) {
+            let opening = skipSpace(start)
+            guard opening < chars.count, chars[opening] == "{" else { throw Failure.unsupported }
+            var depth = 1
+            var i = opening + 1
+            while i < chars.count {
+                if chars[i] == "\\" { i += 2; continue }
+                if chars[i] == "{" { depth += 1 }
+                if chars[i] == "}" { depth -= 1 }
+                if depth == 0 { return (String(chars[(opening + 1)..<i]), i + 1) }
+                i += 1
+            }
+            throw Failure.unsupported
+        }
+
+        var parts: [Part] = []
+        var start = 0
+        var i = 0
+        var depth = 0
+        var leftDepth = 0
+        while i < chars.count {
+            guard chars[i] == "\\" else {
+                if chars[i] == "{" { depth += 1 }
+                if chars[i] == "}" { depth -= 1 }
+                i += 1
+                continue
+            }
+            var end = i + 1
+            while end < chars.count, chars[end].isASCII, chars[end].isLetter { end += 1 }
+            let command = String(chars[(i + 1)..<end])
+            if command == "left" { leftDepth += 1 }
+            if command == "right" { leftDepth -= 1 }
+            guard command == "underbrace" || command == "overbrace" else {
+                i = max(i + 2, end)
+                continue
+            }
+            // Do not split a fraction argument, text group, or paired delimiter.
+            // Unsupported contexts retain the normal readable-source fallback.
+            guard depth == 0, leftDepth == 0 else { throw Failure.unsupported }
+            let (body, next) = try group(end)
+            let over = command == "overbrace"
+            var after = next
+            var annotation: String?
+            let script = skipSpace(next)
+            if script < chars.count, chars[script] == "_" || chars[script] == "^" {
+                guard chars[script] == (over ? "^" : "_") else { throw Failure.unsupported }
+                (annotation, after) = try group(script + 1)
+            }
+            let following = skipSpace(after)
+            if following < chars.count, chars[following] == "_" || chars[following] == "^" {
+                throw Failure.unsupported
+            }
+            if start < i { parts.append(.math(String(chars[start..<i]))) }
+            parts.append(.brace(body: body, annotation: annotation, over: over))
+            i = after
+            start = after
+        }
+        if start < chars.count { parts.append(.math(String(chars[start...]))) }
+        return parts
+    }
+
+    private static func math(_ source: String, fontSize: CGFloat, mode: MTMathUILabelMode,
+                             leadingOperand: Bool, trailingOperand: Bool) throws -> BracedFormulaView {
+        if source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return BracedFormulaView(size: .zero, baseline: 0)
+        }
+        let label = MTMathUILabel()
+        label.fontSize = fontSize
+        label.font?.fallbackFont = CTFontCreateWithName(NSFont.systemFont(ofSize: fontSize).fontName as CFString, fontSize, nil)
+        label.labelMode = mode
+        label.textAlignment = .left
+        label.textColor = NSColor(white: 0.94, alpha: 1)
+        label.displayErrorInline = false
+        label.preferredMaxLayoutWidth = .greatestFiniteMagnitude
+        label.latex = FormulaView.normalizedNativeCompatibility(source)
+        // Zero-width ordinary atoms stand in for adjacent braced expressions. This
+        // lets SwiftMath retain binary-operator spacing at fragment boundaries.
+        func operand() -> MTMathAtom {
+            MTMathListBuilder.build(fromString: "\\text{\u{200B}}")!.atoms[0]
+        }
+        if leadingOperand { label.mathList?.insert(operand(), at: 0) }
+        if trailingOperand { label.mathList?.add(operand()) }
+        let size = label.intrinsicContentSize
+        guard label.error == nil, size.width.isFinite, size.height.isFinite,
+              size.width >= 0, size.height >= 0 else { throw Failure.unsupported }
+        let measured = NSSize(width: size.width, height: max(fontSize / 2, size.height))
+        label.frame = NSRect(origin: .zero, size: measured)
+        label.layoutSubtreeIfNeeded()
+        guard let display = label.displayList else { throw Failure.unsupported }
+        let baseline = (measured.height - max(fontSize / 2, display.ascent + display.descent)) / 2 + display.descent
+        let view = BracedFormulaView(size: measured, baseline: baseline)
+        view.addSubview(label)
+        return view
+    }
+
+    private static func layout(_ parts: [Part], fontSize: CGFloat, mode: MTMathUILabelMode, depth: Int) throws -> BracedFormulaView {
+        guard depth < 32 else { throw Failure.unsupported }
+        let fontSize = max(6, fontSize)
+        var children: [BracedFormulaView] = []
+        for (index, part) in parts.enumerated() {
+            switch part {
+            case .math(let source):
+                let child = try math(source, fontSize: fontSize, mode: mode,
+                                     leadingOperand: index > 0, trailingOperand: index + 1 < parts.count)
+                if child.naturalSize != .zero { children.append(child) }
+            case .brace(let body, let annotation, let over):
+                let base = try layout(split(body), fontSize: fontSize, mode: .display, depth: depth + 1)
+                let note = try annotation.map { try layout(split($0), fontSize: fontSize * 0.7, mode: .text, depth: depth + 1) }
+                children.append(brace(base, note: note, over: over, fontSize: fontSize))
+            }
+        }
+        let baseline = children.map(\.baseline).max() ?? 0
+        let ascent = children.map { $0.naturalSize.height - $0.baseline }.max() ?? 0
+        var width: CGFloat = 0
+        for child in children {
+            child.setFrameOrigin(NSPoint(x: width, y: baseline - child.baseline))
+            width += child.naturalSize.width
+        }
+        let view = BracedFormulaView(size: NSSize(width: width, height: ascent + baseline), baseline: baseline)
+        children.forEach(view.addSubview)
+        return view
+    }
+
+    private static func brace(_ base: BracedFormulaView, note: BracedFormulaView?, over: Bool, fontSize: CGFloat) -> BracedFormulaView {
+        let stroke = fontSize / 24
+        let gap = fontSize * 0.12
+        let braceWidth = max(base.naturalSize.width, fontSize * 0.65)
+        let braceHeight = fontSize * 0.28
+        let width = max(braceWidth + stroke, note?.naturalSize.width ?? 0)
+        let bottom = stroke / 2 + (note.map { $0.naturalSize.height + gap } ?? 0)
+        let baseY = bottom + braceHeight + gap + stroke / 2
+        let height = baseY + base.naturalSize.height
+        let view = BracedFormulaView(size: NSSize(width: width, height: height),
+                                    baseline: over ? base.baseline : baseY + base.baseline)
+        base.setFrameOrigin(NSPoint(x: (width - base.naturalSize.width) / 2, y: over ? 0 : baseY))
+        view.addSubview(base)
+        if let note {
+            note.setFrameOrigin(NSPoint(x: (width - note.naturalSize.width) / 2,
+                                        y: over ? height - note.naturalSize.height - stroke / 2 : stroke / 2))
+            view.addSubview(note)
+        }
+        let left = (width - braceWidth) / 2
+        let right = left + braceWidth
+        let mid = width / 2
+        let corner = min(braceHeight, braceWidth / 4)
+        let centerY = bottom + braceHeight / 2
+        func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: x, y: over ? height - y : y) }
+        let path = NSBezierPath()
+        path.move(to: point(left, bottom + braceHeight))
+        path.curve(to: point(left + corner, centerY), controlPoint1: point(left, centerY), controlPoint2: point(left, centerY))
+        path.line(to: point(mid - corner, centerY))
+        path.curve(to: point(mid, bottom), controlPoint1: point(mid, centerY), controlPoint2: point(mid, centerY))
+        path.curve(to: point(mid + corner, centerY), controlPoint1: point(mid, centerY), controlPoint2: point(mid, centerY))
+        path.line(to: point(right - corner, centerY))
+        path.curve(to: point(right, bottom + braceHeight), controlPoint1: point(right, centerY), controlPoint2: point(right, centerY))
+        path.lineWidth = stroke
+        path.lineCapStyle = .round
+        view.curve = path
+        return view
     }
 }

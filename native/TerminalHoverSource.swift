@@ -90,7 +90,14 @@ final class TerminalHoverSource {
         }
         if let bounds = bounds(element, rangeValue), !bounds.insetBy(dx: -2, dy: -2).contains(point),
            !(bundle == "com.googlecode.iterm2" && matchesWrappedCell(element, text: nsText, range: range, point: point)) {
-            return Result(formula: nil, stage: "character-bounds-mismatch")
+            // After terminal redraws, point lookup can disagree with character
+            // bounds. Recover only a nearby character whose bounds hit the pointer.
+            guard allowPositionFallback, bundle == "com.googlecode.iterm2",
+                  let nearby = HoverTextPosition.nearbyRange(text: nsText, location: range.location),
+                  let located = accessibilityRange(at: point, element: element, text: nsText, searchRange: nearby) else {
+                return Result(formula: nil, stage: "character-bounds-mismatch")
+            }
+            range = CFRange(location: located.location, length: located.length)
         }
 
         let start = max(0, range.location - 16_384)

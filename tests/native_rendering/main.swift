@@ -113,6 +113,40 @@ let reportedUndersetBody = #"""
   RX_q(v)+t-X_i(v)
   \right\|_2^2
   """#
+let reportedExpectationBody = #"""
+v^*(x,t)
+=
+\mathbb E\!\left[
+\epsilon-x_{\mathrm{gt}}
++\lambda(1-2t)\delta
+\;\middle|\;
+x_t=x,t
+\right].
+"""#
+let reportedDerivativeBody = #"""
+D_\theta
+=
+\underbrace{
+\frac{\partial u_\theta}{\partial z_t}\,v_{\mathrm{cond}}
+}_{\text{位置输入移动造成的变化}}
++
+\underbrace{
+\frac{\partial u_\theta}{\partial t}
+}_{\text{时间输入前进造成的变化}}
+"""#
+let reportedDisplacementBody = #"""
+\underbrace{\int_r^t v(z_\tau,\tau)\,d\tau}_{\text{把各小段位移加起来}}
+=
+\underbrace{z_t-z_r}_{\text{总位移}}
+"""#
+let reportedTargetBody = #"""
+\underbrace{y}_{\text{本轮的训练目标}}
+=
+\operatorname{stopgrad}
+\left[
+v_{\mathrm{cond}}-(t-r)D_\theta
+\right]
+"""#
 var samples = [
     Sample(name: "inline", source: "$e^{i\\pi}+1=0$", body: "e^{i\\pi}+1=0", maximum: standard),
     Sample(name: "inline-parentheses", source: "\\(x^2+y^2=1\\)", body: "x^2+y^2=1", maximum: standard),
@@ -138,7 +172,28 @@ var samples = [
            body: #"\begin{aligned}a&=b\\c&=d\end{aligned}"#, maximum: standard),
     Sample(name: "reported-underset-argmin", source: "$$\n" + reportedUndersetBody + "$$",
            body: "\n" + reportedUndersetBody, maximum: standard),
+    Sample(name: "reported-conditional-expectation", source: "$$\n" + reportedExpectationBody + "\n$$",
+           body: "\n" + reportedExpectationBody + "\n", maximum: standard),
+    Sample(name: "reported-underbrace-derivative", source: "$$\n" + reportedDerivativeBody + "\n$$",
+           body: "\n" + reportedDerivativeBody + "\n", maximum: standard),
+    Sample(name: "reported-underbrace-displacement", source: "$$\n" + reportedDisplacementBody + "\n$$",
+           body: "\n" + reportedDisplacementBody + "\n", maximum: standard),
+    Sample(name: "reported-underbrace-target", source: "$$\n" + reportedTargetBody + "\n$$",
+           body: "\n" + reportedTargetBody + "\n", maximum: standard),
+    Sample(name: "underbrace-narrow", source: reportedDerivativeBody, body: reportedDerivativeBody,
+           maximum: NSSize(width: 120, height: 55)),
+    Sample(name: "boxed-underbrace", source: "\\boxed{" + reportedTargetBody + "}", body: reportedTargetBody,
+           maximum: standard),
 ]
+
+for body in [reportedDerivativeBody, reportedDisplacementBody, reportedTargetBody] {
+    let source = "$$\n" + body + "\n$$"
+    let document = TerminalFormulaDocument(text: source)
+    let scalars = Array(source.unicodeScalars)
+    check(scalars.indices.filter { !scalars[$0].properties.isWhitespace }.allSatisfy {
+        document.match(at: $0)?.formula == source
+    }, "underbrace/extracts-entire-formula-including-Chinese-annotations")
+}
 
 let markdownInlineExpected = #"\(c_{\mathrm{ref}}\)"#
 let markdownInlineScalars = Array(markdownStrippedInlineSource.unicodeScalars)
@@ -209,20 +264,65 @@ func tableShapes(_ list: MTMathList?) -> [[Int]] {
     }
 }
 
+func braceViews(_ view: NSView) -> [BracedFormulaView] {
+    let own = (view as? BracedFormulaView).flatMap { $0.curve == nil ? nil : $0 }
+    return (own.map { [$0] } ?? []) + view.subviews.flatMap(braceViews)
+}
+
+func mathLabels(_ view: NSView) -> [MTMathUILabel] {
+    if let label = view as? MTMathUILabel { return [label] }
+    return view.subviews.flatMap(mathLabels)
+}
+
+func drawingFits(_ view: NSView) -> Bool {
+    if let label = view as? MTMathUILabel {
+        guard let display = label.displayList else { return false }
+        return display.width <= label.bounds.width + 1 && display.ascent + display.descent <= label.bounds.height + 1
+    }
+    return view.subviews.allSatisfy { view.bounds.insetBy(dx: -1, dy: -1).contains($0.frame) && drawingFits($0) }
+}
+
+func checkBraceDrawing(_ brace: BracedFormulaView) {
+    guard let curve = brace.curve, let base = brace.subviews.first else {
+        check(false, "brace/has-base-and-curve"); return
+    }
+    let rect = curve.bounds
+    check(rect.width >= base.frame.width - 0.01 && abs(rect.midX - base.frame.midX) < 0.01,
+          "brace/curve-spans-and-centers-on-the-base")
+    check(rect.maxY < base.frame.minY || rect.minY > base.frame.maxY,
+          "brace/curve-does-not-overlap-the-base")
+    if brace.subviews.count == 2 {
+        let note = brace.subviews[1]
+        check(abs(note.frame.midX - rect.midX) < 0.01 &&
+              (note.frame.maxY < rect.minY || note.frame.minY > rect.maxY),
+              "brace/annotation-is-centered-beyond-the-curve")
+    }
+    let region = rect.insetBy(dx: -0.5, dy: -0.5)
+    guard let bitmap = brace.bitmapImageRepForCachingDisplay(in: region) else {
+        check(false, "brace/bitmap"); return
+    }
+    brace.cacheDisplay(in: region, to: bitmap)
+    let inkColumns = (0..<bitmap.pixelsWide).filter { x in
+        (0..<bitmap.pixelsHigh).contains { y in (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.05 }
+    }
+    check(inkColumns.count > bitmap.pixelsWide / 2,
+          "brace/draws-visible-curve-pixels-across-its-width")
+}
+
 for sample in samples {
     let began = Date()
     let size = view.render(sample.source, maxSize: sample.maximum)
     let elapsed = Date().timeIntervalSince(began) * 1000
-    let content = label.intrinsicContentSize
-    check(view.error == nil && label.error == nil && !label.isHidden && fallback.isHidden, "\(sample.name)/native-render")
+    let drawing = view.mathContent
+    let content = drawing.intrinsicContentSize
+    check(view.error == nil && label.error == nil && !drawing.isHidden && fallback.isHidden, "\(sample.name)/native-render")
     check(view.renderedBody == sample.body, "\(sample.name)/source")
     check(size.width.isFinite && size.height.isFinite && size.width > 0 && size.height > 0 &&
           size.width <= sample.maximum.width && size.height <= sample.maximum.height, "\(sample.name)/panel-bounds")
-    check(content.width <= label.bounds.width + 1 && content.height <= label.bounds.height + 1 &&
-          view.bounds.contains(label.frame), "\(sample.name)/content-fits")
-    let display = label.displayList
-    check(display != nil && display!.width <= label.bounds.width + 1 &&
-          display!.ascent + display!.descent <= label.bounds.height + 1, "\(sample.name)/drawn-content-fits")
+    check(content.width <= drawing.bounds.width + 1 && content.height <= drawing.bounds.height + 1 &&
+          view.bounds.contains(drawing.frame), "\(sample.name)/content-fits")
+    check(drawingFits(drawing), "\(sample.name)/drawn-content-fits")
+    braceViews(drawing).forEach(checkBraceDrawing)
     if sample.name.hasPrefix("sigmoid-") {
         // Drawing can trigger a second layout after intrinsic size measurement.
         // Inspect that final display, including on a narrow, scaled panel.
@@ -243,6 +343,28 @@ for sample in samples {
         check(label.latex.contains(#"\begin{smallmatrix}"#) && label.latex.contains(#"\arg\min"#) &&
               label.latex.contains(#"RX_q(v)+t-X_i(v)"#),
               "reported-underset-argmin/native-compatible-stack-preserves-complete-formula")
+    } else if sample.name == "reported-conditional-expectation" {
+        let expectation = label.mathList?.atoms.compactMap { $0 as? MTInner }.first
+        let separators = expectation?.innerList?.atoms.compactMap { $0 as? MTInner } ?? []
+        check(expectation?.leftBoundary?.nucleus == "[" && expectation?.rightBoundary?.nucleus == "]" &&
+              separators.count == 1 && separators.first?.leftBoundary?.nucleus == "|",
+              "conditional-expectation/preserves-brackets-and-single-condition-bar")
+        check(label.mathList?.atoms.first?.superScript?.atoms.first?.nucleus == "*" &&
+              expectation?.innerList?.atoms.last?.nucleus == "t" && tableShapes(label.mathList).isEmpty,
+              "conditional-expectation/preserves-star-and-final-conditioning-variable-without-spurious-rows")
+    } else if sample.name.hasPrefix("reported-underbrace-") {
+        let curves = braceViews(drawing)
+        check(curves.count == (sample.name.hasSuffix("target") ? 1 : 2), "\(sample.name)/draws-each-brace")
+        if let root = drawing as? BracedFormulaView {
+            check(curves.allSatisfy {
+                abs(root.convert(NSPoint(x: 0, y: $0.baseline), from: $0).y - root.baseline) < 0.01
+            }, "\(sample.name)/preserves-the-equation-baseline")
+        }
+        let annotations = sample.name.hasSuffix("target") ? ["本轮的训练目标"]
+            : sample.name.hasSuffix("derivative") ? ["位置输入移动造成的变化", "时间输入前进造成的变化"]
+            : ["把各小段位移加起来", "总位移"]
+        let rendered = mathLabels(drawing).map(\.latex).joined()
+        check(annotations.allSatisfy(rendered.contains), "\(sample.name)/keeps-Chinese-text")
     }
     print("METRIC \(sample.name): \(String(format: "%.2f", elapsed))ms, panel=\(size), content=\(content), font=\(label.fontSize), error=\(String(describing: view.error))")
 }
@@ -299,6 +421,53 @@ for source in [#"\underset{x}"#, #"\overset x {y}"#, #"\\underset{x}{y}"#] {
           "native-compatibility-preserves-malformed-or-row-separator-source")
 }
 
+for source in [#"\underbrace{x}_{"#, #"\underbrace{x}^a"#, #"\\underbrace{x}_{a}"#] {
+    check(FormulaView.normalizedNativeCompatibility(source) == source,
+          "brace-compatibility-preserves-incomplete-or-escaped-commands")
+}
+for source in [#"\overbrace{x+y}^{\text{sum}}+z"#, #"\underbrace{x+y}"#,
+               #"\underbrace{\underbrace{\{x\}}_{a}+y}_{\text{outer}}"#] {
+    _ = view.render(source, maxSize: standard)
+    check(view.error == nil && view.mathContent is BracedFormulaView && fallback.isHidden,
+          "brace-compatibility-handles-nesting-and-balanced-escaped-braces")
+    braceViews(view.mathContent).forEach(checkBraceDrawing)
+}
+
+let spacingReference = MTMathUILabel()
+spacingReference.fontSize = 14
+spacingReference.preferredMaxLayoutWidth = .greatestFiniteMagnitude
+spacingReference.latex = "x+y"
+let sumWidth = spacingReference.intrinsicContentSize.width
+for (source, replaced, index) in [(#"\underbrace{x}_{a}+y"#, "x", 1),
+                                   (#"x+\underbrace{y}_{a}"#, "y", 0)] {
+    spacingReference.latex = replaced
+    let expected = sumWidth - spacingReference.intrinsicContentSize.width
+    _ = view.render(source, maxSize: standard)
+    let parts = view.mathContent.subviews
+    check(parts.count == 2 && abs(parts[index].intrinsicContentSize.width - expected) < 0.01,
+          "brace/preserves-native-binary-operator-spacing-next-to-\(replaced)")
+}
+
+let middleCompatibility: [(String, String)] = [
+    (#"\left[a\middle|b\right]"#, #"\left[a\bigm|b\right]"#),
+    (#"\left\{a\middle\|b\right\}"#, #"\left\{a\bigm\|b\right\}"#),
+    (#"\left(a\middle\vert b\middle\Vert c\right)"#, #"\left(a\bigm\vert b\bigm\Vert c\right)"#),
+    (#"\left[a+\left(b\middle/c\right)\middle|d\right]"#,
+     #"\left[a+\left(b\bigm/c\right)\bigm|d\right]"#),
+]
+for (source, expected) in middleCompatibility {
+    check(FormulaView.normalizedNativeCompatibility(source) == expected,
+          "middle-delimiter/rewrites-only-matched-math-context")
+    _ = view.render(source, maxSize: standard)
+    check(view.error == nil && !label.isHidden && fallback.isHidden,
+          "middle-delimiter/native-render-keeps-whole-expression")
+}
+for source in [#"\middle|"#, #"\\middle|"#, #"\left[\text{\middle|}\right]"#,
+               #"\left[x\right]\middle|"#, #"\left[a\middleword b\right]"#] {
+    check(FormulaView.normalizedNativeCompatibility(source) == source,
+          "middle-delimiter/preserves-unmatched-escaped-text-and-other-commands")
+}
+
 let normal = "$e^{i\\pi}+1=0$"
 let first = view.render(normal, maxSize: standard)
 _ = view.render(long, maxSize: NSSize(width: 280, height: 100))
@@ -330,6 +499,19 @@ for source in [#"\unsupported{K = \frac{P}{P+R}}"#,
 }
 _ = view.render(normal, maxSize: standard)
 check(view.error == nil && !label.isHidden && fallback.isHidden, "valid-formula-recovers-after-error")
+
+for broken in [#"\underbrace{\frac{1}{"#, #"\underbrace{x}_{\text{截断"#,
+               #"\underbrace{x}_{a}+\unknown"#, #"\frac{\underbrace{x}_{a}}{y}"#,
+               #"\begin{aligned}a&=\left("#, #"\unsupported{x}"#] {
+    _ = view.render(broken, maxSize: standard)
+    check(view.error != nil && !fallback.isHidden && braceViews(view).isEmpty, "broken-scroll-fragment/falls-back")
+    let recovered = view.render(normal, maxSize: standard)
+    check(view.error == nil && !label.isHidden && fallback.isHidden && recovered == first && braceViews(view).isEmpty,
+          "broken-scroll-fragment/next-normal-formula-recovers-without-reset")
+    _ = view.render("$$\n" + reportedDisplacementBody + "\n$$", maxSize: standard)
+    check(view.error == nil && braceViews(view.mathContent).count == 2,
+          "broken-scroll-fragment/next-underbrace-formula-recovers-without-reset")
+}
 
 print("Result: \(checked - failed)/\(checked) native rendering checks passed")
 exit(failed == 0 ? 0 : 1)

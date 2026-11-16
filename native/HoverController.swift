@@ -119,6 +119,12 @@ final class HoverController: NSObject {
         formula = ""
     }
 
+    func shouldTryPositionFallback(at now: Date) -> Bool {
+        guard formula.isEmpty, now.timeIntervalSince(lastMovement) >= 0.08 else { return false }
+        // Scrolling/redrawing can change the snapshot without moving the pointer.
+        return lastPositionFallbackGeneration != generation || now.timeIntervalSince(lastRead) > 0.8
+    }
+
     func tick() {
         let trusted = AXIsProcessTrusted()
         if lastTrust != trusted {
@@ -148,8 +154,7 @@ final class HoverController: NSObject {
             lastMovement = Date()
             generation += 1
         }
-        let settled = Date().timeIntervalSince(lastMovement) >= 0.08
-        let needsPositionFallback = formula.isEmpty && settled && lastPositionFallbackGeneration != generation
+        let needsPositionFallback = shouldTryPositionFallback(at: Date())
         guard Date().timeIntervalSince(lastRead) > 0.016,
               lastReadGeneration != generation || needsPositionFallback || Date().timeIntervalSince(lastRead) > 0.8,
               !reading, NSEvent.pressedMouseButtons == 0 else { return }
