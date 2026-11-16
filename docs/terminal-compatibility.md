@@ -49,6 +49,10 @@ Math Peek 可以通过有界查找定位字符。仅提供字体名称和字号�
 
 ## cmux 网格通道
 
+连接失败时，先更新 cmux，新开一个本机窗格，再运行 `math-peek connect cmux`。
+如果 Math Peek 提示无法保存钥匙串条目，可在“钥匙串访问”中删除
+`local.mathpeek.preview.cmux`，然后重新连接。
+
 `math-peek connect cmux` 只读取自身继承的 `CMUX_SOCKET_CAPABILITY` 和本地 socket 路径，
 将一次性请求交给应用验证后存入钥匙串，不读取其他进程的环境，不放宽 socket 权限。
 CLI 使用 0700 目录和 0600 文件；URL 只包含随机文件名，不包含 capability。
